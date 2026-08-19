@@ -15,3 +15,8 @@ cert.pem
 key.pem
 dist/
 build/
+
+# Database Backups
+*.sql.gz
+*.sql
+*.gz
