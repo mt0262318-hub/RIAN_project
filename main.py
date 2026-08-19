@@ -64,6 +64,7 @@ async def generate_rian_response(user_id: str, user_query: str, llm_instance) ->
         conversation_history[user_id] = history[-10:]
 
     return reply_text
+
 # ==========================================
 # SYSTEM SETTINGS & LOGGING CONFIGURATION
 # ==========================================
@@ -379,8 +380,16 @@ async def websocket_telemetry(websocket: WebSocket):
                 "state_text": "Processing neural command...",
             })
 
-            # Step 2: Autonomous Agent Pipeline Execution
-            response_text = await assistant_instance.process_query(query, user_id=user_id)
+            # Step 2: Autonomous Context-Aware Execution with Memory
+            if 'chat_groq' not in locals() and 'chat_groq' not in globals():
+                from langchain_groq import ChatGroq
+                chat_groq = ChatGroq(model_name="llama-3.3-70b-versatile", temperature=0.5)
+
+            response_text = await generate_rian_response(
+                user_id=user_id,
+                user_query=query,
+                llm_instance=chat_groq
+            )
 
             # Step 3: Broadcast Response and Set Active Listener State
             await websocket.send_json({
