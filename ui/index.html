@@ -154,12 +154,21 @@
             }
         };
 
+        // Unique Request Token Generator to prevent server echo
+        function generateRequestId() {
+            return "req_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6);
+        }
+
         function sendCommand() {
             let txt = userInput.value.trim();
             if (!txt) return;
             logToDashboard('USER', txt);
             if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ text: txt }));
+                ws.send(JSON.stringify({ 
+                    text: txt,
+                    query: txt,
+                    request_id: generateRequestId()
+                }));
             }
             userInput.value = '';
         }
@@ -175,6 +184,7 @@
         let voiceChunks = [];
         let isRecording = false;
         let isSystemProcessing = false;
+        let lastVoiceDispatchTime = 0;
 
         async function initAudioDevice() {
             if (!mediaStream) {
@@ -188,7 +198,18 @@
             if (!isRecording) {
                 await initAudioDevice();
                 voiceChunks = [];
-                recorder = new MediaRecorder(mediaStream, { mimeType: 'audio/webm' });
+                
+                // Audio mimeType fallback for cross-device support (iOS / Android / Chrome)
+                let options = { mimeType: 'audio/webm' };
+                if (!MediaRecorder.isTypeSupported('audio/webm')) {
+                    if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                        options = { mimeType: 'audio/mp4' };
+                    } else {
+                        options = {};
+                    }
+                }
+                
+                recorder = new MediaRecorder(mediaStream, options);
 
                 recorder.ondataavailable = (e) => {
                     if (e.data && e.data.size > 0) voiceChunks.push(e.data);
@@ -201,13 +222,25 @@
                         return;
                     }
 
+                    // Loop Shield: Ignore dispatches faster than 1.5 seconds
+                    const now = Date.now();
+                    if (now - lastVoiceDispatchTime < 1500) {
+                        voiceChunks = [];
+                        isSystemProcessing = false;
+                        resetMicUI();
+                        return;
+                    }
+                    lastVoiceDispatchTime = now;
+
                     isSystemProcessing = true;
                     streamStatus.innerText = "⚡ PROCESSING NEURAL INSTRUCTION...";
                     
-                    const audioBlob = new Blob(voiceChunks, { type: 'audio/webm' });
+                    const mimeType = recorder.mimeType || 'audio/webm';
+                    const audioBlob = new Blob(voiceChunks, { type: mimeType });
                     voiceChunks = [];
                     const formData = new FormData();
                     formData.append('file', audioBlob);
+                    formData.append('request_id', generateRequestId());
 
                     try {
                         const res = await fetch('/api/voice-query', { method: 'POST', body: formData });
@@ -223,6 +256,10 @@
                             streamStatus.innerText = "🔊 R.I.A.N. SPEAKING...";
                             const audio = new Audio("data:audio/mp3;base64," + data.audio_b64);
                             audio.onended = () => {
+                                isSystemProcessing = false;
+                                resetMicUI();
+                            };
+                            audio.onerror = () => {
                                 isSystemProcessing = false;
                                 resetMicUI();
                             };
