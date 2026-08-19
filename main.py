@@ -1,3 +1,4 @@
+from tools.vault_tool_schema import VAULT_TOOLS, handle_vault_call
 from langchain_core.messages import SystemMessage, HumanMessage
 import os
 import sys
