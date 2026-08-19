@@ -28,7 +28,41 @@ session_locks = {}
 
 async def run_direct_vision(prompt_text: str) -> str:
     return pc_tools.run_screen_vision(prompt_text)
+# --- CONVERSATION MEMORY & PERSISTENT PERSONA ---
+conversation_history: Dict[str, List[Any]] = {}
 
+RIAN_SYSTEM_PROMPT = """You are R.I.A.N. (Real-time Intelligent Adaptive Node), an elite, highly intelligent, and witty personal AI assistant.
+
+CORE RULES & IDENTITY:
+1. Self-Awareness: You HAVE active real-time Edge-TTS speech and full access to PC controls (mouse, keyboard, media, apps, and vision). NEVER say you cannot speak or lack desktop capabilities.
+2. Context Memory: Always maintain full context of recent conversation turns. Answer follow-up questions accurately without drifting off-topic.
+3. Desktop Operations: If the user asks to control the PC (skip songs, skip ads, type text, click, open apps), acknowledge cleanly and trigger the appropriate action.
+4. Tone & Style: Sharp, respectful, authentic, and direct. Communicate in natural, clear Hinglish/English."""
+
+def get_or_create_history(session_id: str) -> List[Any]:
+    if session_id not in conversation_history:
+        conversation_history[session_id] = []
+    return conversation_history[session_id]
+
+async def generate_rian_response(user_id: str, user_query: str, llm_instance) -> str:
+    history = get_or_create_history(user_id)
+
+    messages = [SystemMessage(content=RIAN_SYSTEM_PROMPT)]
+    messages.extend(history[-8:])
+    
+    current_user_msg = HumanMessage(content=user_query)
+    messages.append(current_user_msg)
+
+    response = await llm_instance.ainvoke(messages)
+    reply_text = response.content.strip()
+
+    history.append(current_user_msg)
+    history.append(HumanMessage(content=reply_text))
+
+    if len(history) > 20:
+        conversation_history[user_id] = history[-10:]
+
+    return reply_text
 # ==========================================
 # SYSTEM SETTINGS & LOGGING CONFIGURATION
 # ==========================================
