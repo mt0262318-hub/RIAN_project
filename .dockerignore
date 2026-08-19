@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.git
+.env
+*.log
+logs/
+memory/
+rian_memory/

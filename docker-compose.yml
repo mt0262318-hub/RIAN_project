@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: rian_postgres
+    environment:
+      POSTGRES_USER: rian_user
+      POSTGRES_PASSWORD: rian_password
+      POSTGRES_DB: rian_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - rian_net
+    restart: unless-stopped
+
+  # 🌟 Naya Qdrant Vector DB Service
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: rian_qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    networks:
+      - rian_net
+    restart: unless-stopped
+
+  fastapi:
+    build: .
+    container_name: rian_fastapi
+    command: ./entrypoint.sh
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://rian_user:rian_password@rian_postgres:5432/rian_db
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+    depends_on:
+      - postgres
+      - qdrant
+    networks:
+      - rian_net
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: rian_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - fastapi
+    networks:
+      - rian_net
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  qdrant_storage:  # <-- Qdrant Data Persistence Volume
+
+networks:
+  rian_net:
+    driver: bridge

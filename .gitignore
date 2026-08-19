@@ -1,0 +1,17 @@
+venv/
+rian_env/
+env/
+__pycache__/
+*.py[cod]
+*.bin
+*.sqlite3
+rian_memory/
+models/
+logs/
+*.log
+nohup.out
+.env
+cert.pem
+key.pem
+dist/
+build/
