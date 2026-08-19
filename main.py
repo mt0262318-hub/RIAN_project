@@ -294,8 +294,14 @@ class BiometricsRequest(BaseModel):
 @app.post("/api/chat")
 async def chat_with_rian(request: ChatRequest):
     try:
-        response_text = await assistant_instance.process_query(
-            request.query, user_id=request.user_id
+        if 'chat_groq' not in locals() and 'chat_groq' not in globals():
+            from langchain_groq import ChatGroq
+            chat_groq = ChatGroq(model_name="llama-3.3-70b-versatile", temperature=0.5)
+
+        response_text = await generate_rian_response(
+            user_id=request.user_id,
+            user_query=request.query,
+            llm_instance=chat_groq
         )
         return {
             "status": "success",
