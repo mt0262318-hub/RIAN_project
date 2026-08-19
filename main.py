@@ -1,3 +1,11 @@
+import asyncio
+import json
+import time
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+
+# Request cache to drop repetitive loops
+processed_requests = {}
+session_locks = {}
 import base64
 import io
 import edge_tts
