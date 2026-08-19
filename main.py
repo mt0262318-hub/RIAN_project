@@ -317,6 +317,19 @@ async def websocket_telemetry(websocket: WebSocket):
             if not query:
                 continue
 
+            # --- DEDUPLICATION SHIELD (Loop & Echo Preventer) ---
+            req_id = payload.get("request_id")
+            now = time.time()
+            for r_id, t_stamp in list(processed_requests.items()):
+                if now - t_stamp > 10.0:
+                    processed_requests.pop(r_id, None)
+
+            if req_id and req_id in processed_requests:
+                continue
+
+            if req_id:
+                processed_requests[req_id] = now
+
             # Step 1: Echo User Input to HUD Log
             await websocket.send_json({"type": "log", "log": f"Voice/Text Input: {query}"})
             await websocket.send_json({
