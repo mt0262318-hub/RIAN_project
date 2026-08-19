@@ -1,40 +1,33 @@
-import asyncio
-import json
-import time
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-
-# Request cache to drop repetitive loops
-processed_requests = {}
-session_locks = {}
-import base64
-import io
-import edge_tts
-from fastapi import File, UploadFile
-from groq import Groq
-from core.persona_manager import persona_engine
-
-async def run_direct_vision(prompt_text: str) -> str:
-    import tools.pc_tools as pc_tools
-    return pc_tools.run_screen_vision(prompt_text)
-
-import json
-import tools.pc_tools as pc_tools
 import os
 import sys
-import json
+import io
 import time
+import json
+import base64
 import asyncio
 import logging
 from typing import List, Optional, Dict, Any
+
 from dotenv import load_dotenv
-
-load_dotenv()
-
 from pydantic import BaseModel, Field
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, File, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
+from groq import Groq
+import edge_tts
+
+import tools.pc_tools as pc_tools
+from core.persona_manager import persona_engine
+
+load_dotenv()
+
+# --- Request Cache & Execution Locks (Loop/Echo Preventer) ---
+processed_requests = {}
+session_locks = {}
+
+async def run_direct_vision(prompt_text: str) -> str:
+    return pc_tools.run_screen_vision(prompt_text)
 
 # ==========================================
 # SYSTEM SETTINGS & LOGGING CONFIGURATION
