@@ -309,7 +309,7 @@ async def chat_with_rian(request: ChatRequest):
     try:
         if 'chat_groq' not in locals() and 'chat_groq' not in globals():
             from langchain_groq import ChatGroq
-            chat_groq = ChatGroq(model_name="llama-3.1-8b-instant", temperature=0.5)
+            chat_groq = ChatGroq(model_name="qwen/qwen3.6-27b", temperature=0.5)
 
         response_text = await generate_rian_response(
             user_id=request.user_id,
@@ -394,7 +394,7 @@ async def websocket_telemetry(websocket: WebSocket):
             # Step 2: Autonomous Context-Aware Execution with Memory
             if 'chat_groq' not in locals() and 'chat_groq' not in globals():
                 from langchain_groq import ChatGroq
-                chat_groq = ChatGroq(model_name="llama-3.1-8b-instant", temperature=0.5)
+                chat_groq = ChatGroq(model_name="qwen/qwen3.6-27b", temperature=0.5)
 
             response_text = await generate_rian_response(
                 user_id=user_id,
