@@ -37,8 +37,9 @@ async def websocket_duplex_voice_endpoint(websocket: WebSocket):
 
             # Handle JSON control frames
             elif "text" in message and message["text"]:
-                logger.info(f"Voice control event: {message["text"]}")
-                await websocket.send_json({"event": "ACK", "payload": message["text"]})
+                text_payload = message["text"]
+                logger.info(f"Voice control event: {text_payload}")
+                await websocket.send_json({"event": "ACK", "payload": text_payload})
 
     except WebSocketDisconnect:
         logger.info("🎙️ Duplex Voice Stream disconnected.")

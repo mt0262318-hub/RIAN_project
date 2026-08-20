@@ -1,3 +1,4 @@
+from services.voice_stream.stream_router import stream_router
 from services.ingress_router import ingress_bp
 from tools.vault_tool_schema import VAULT_TOOLS, handle_vault_call
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -246,6 +247,7 @@ class RIANAssistant:
 assistant_instance = RIANAssistant()
 app = FastAPI(title="J.I.V.A. / R.I.A.N. Autonomous AI Master")
 app.include_router(ingress_bp)
+app.include_router(stream_router)
 
 
 class ConnectionManager:
