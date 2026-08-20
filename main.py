@@ -165,63 +165,48 @@ class RIANAssistant:
             logger.warning(f"Vector search bypassed: {e}")
         return "Context: Active Session Online"
 
-    async def process_query(self, query: str, user_id: str = "default_user") -> str:
-        """Multi-Stage Intercept, Context Augment & LangGraph Execution"""
+        async def process_query(self, query: str, user_id: str = "default_user") -> str:
         try:
+            q_low = (query or "").lower().strip()
+            
+            # --- FORCE DIRECT PC BRIDGE DISPATCH ---
+            if "youtube" in q_low and any(k in q_low for k in ["play", "chalao", "song", "baja", "search"]):
+                search_kw = q_low.replace("open youtube play song", "").replace("open youtube play", "").replace("play song", "").replace("open youtube", "").replace("play", "").replace("search", "").strip()
+                await pc_bridge.execute_command("play_youtube", {"query": search_kw})
+                return f"Playing {search_kw or 'music'} on YouTube."
+            elif "youtube" in q_low:
+                await pc_bridge.execute_command("launch_target", {"target": "youtube"})
+                return "YouTube open ho gaya."
+            elif "notepad" in q_low:
+                await pc_bridge.execute_command("launch_target", {"target": "notepad"})
+                return "Notepad open kar diya hai."
+            elif "calc" in q_low or "calculator" in q_low:
+                await pc_bridge.execute_command("launch_target", {"target": "calc"})
+                return "Calculator open kar diya hai."
+            elif "telegram" in q_low:
+                await pc_bridge.execute_command("launch_target", {"target": "telegram"})
+                return "Telegram open kar diya hai."
+
             session = await session_manager.get_or_create_session(user_id)
-            query_lower = query.lower().strip()
-
-           # Fast Context Interceptions: Persona Switch
-            detected_persona = persona_engine.detect_persona_switch(query)
-            if detected_persona:
-                active_profile = persona_engine.set_persona(user_id, detected_persona)
-                if detected_persona == "caring_companion":
-                    return "Arey bilkul! Ab se main tumhari caring companion ban kar baat karungi. Batao, kaisa raha aaj ka din? ❤️"
-                elif detected_persona == "companion_friend":
-                    return "Haan bhai! Ab se dost mode active hai. Bata kya chal raha hai?"
-                elif detected_persona == "finance_advisor":
-                    return "Understood. Wealth Strategist persona active. Share your financial query."
-                elif detected_persona == "tech_lead":
-                    return "Principal Architect mode active. Let's review the code and architecture."
-                else:
-                    return "Default R.I.A.N. Core mode restored."
-            # Fast Context Interceptions: Name registration
-            if "mera naam" in query_lower and ("hai" in query_lower or "rakh" in query_lower):
-                words = query_lower.split()
-                try:
-                    idx = words.index("naam")
-                    name = words[idx + 1].replace("hai", "").replace("rakho", "").strip(".,!?")
-                    session.context["Name"] = name
-                    return f"Theek hai, maine yaad rakh liya hai ki aapka naam {name} hai."
-                except Exception:
-                    pass
-
-            # Fast Context Interceptions: Name retrieval
-            if any(x in query_lower for x in ["mera naam kya", "what is my name", "who am i"]):
-                name = session.context.get("Name")
-                if name:
-                    return f"Aapka naam {name} hai."
-                return "Mujhe abhi aapka naam nahi pata. Kripya apna naam batayein."
-
-            # Code Sandbox Intent Interception
+            
             if query_lower.startswith("run code:") or query_lower.startswith("exec:"):
                 raw_code = query.split(":", 1)[1].strip()
                 sandbox_result = await asyncio.to_thread(sandbox.execute, raw_code)
-                return f"[Sandbox Execution Result]:\n{sandbox_result}"
+                return f"[Sandbox Execution Result]:
+{sandbox_result}"
 
-            # Memory Retrieval & Session Context Augmented Prompt
             retrieved_memory = await self.retrieve_relevant_memory(query)
-            user_name = session.context.get("Name", "Unknown")
+            user_name = session.context.get("Name", "Manish")
             profile_text = f"User ID: {user_id}, Name: {user_name}, Memory: {retrieved_memory}"
-            enhanced_query = f"[System Context -> {profile_text}]\nUser Query: {query}"
+            enhanced_query = f"[System Context -> {profile_text}]
+User Query: {query}"
 
-            # Async LangGraph Multi-Tool Execution
             result = await asyncio.to_thread(
                 self.agent.invoke,
                 {"messages": [HumanMessage(content=enhanced_query)]},
                 {"recursion_limit": 8}
             )
-            response = result["messages"][-1].content
+            response = clean_llm_response(result["messages"][-1].content)
             return response
 
         except Exception as e:
