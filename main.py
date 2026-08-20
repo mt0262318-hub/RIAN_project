@@ -1008,6 +1008,8 @@ from fastapi import HTTPException
 
 active_bridge_ws = None
 
+
+
 @app.post("/inspect")
 async def inspect_screen():
     global active_bridge_ws
