@@ -165,7 +165,8 @@ class RIANAssistant:
 
     async def retrieve_relevant_memory(self, query: str) -> str:
         """Fetch memory embeddings and semantic context"""
-if vector_db:
+        try:
+            if vector_db:
                 matches = await asyncio.to_thread(vector_db.search, query, top_k=2)
                 if matches:
                     return " | ".join([m.get("text", "") for m in matches])
@@ -175,6 +176,7 @@ if vector_db:
 
     async def process_query(self, query: str, user_id: str = "default_user") -> str:
         """Multi-Stage Intercept, Context Augment & LangGraph Execution"""
+        try:
             session = await session_manager
             direct_action = await resolve_and_dispatch_action(query)
             if direct_action:
@@ -198,6 +200,7 @@ if vector_db:
             # Fast Context Interceptions: Name registration
             if "mera naam" in query_lower and ("hai" in query_lower or "rakh" in query_lower):
                 words = query_lower.split()
+                try:
                     idx = words.index("naam")
                     name = words[idx + 1].replace("hai", "").replace("rakho", "").strip(".,!?")
                     session.context["Name"] = name
@@ -273,6 +276,7 @@ class ConnectionManager:
 
     async def broadcast_state(self, message: Dict[str, Any]):
         for connection in self.active_connections:
+            try:
                 await connection.send_json(message)
             except Exception:
                 pass
@@ -306,6 +310,7 @@ class BiometricsRequest(BaseModel):
 
 @app.post("/api/chat")
 async def chat_with_rian(request: ChatRequest):
+    try:
         if 'chat_groq' not in locals() and 'chat_groq' not in globals():
             from langchain_groq import ChatGroq
             chat_groq = ChatGroq(model_name="qwen/qwen3.6-27b", temperature=0.5)
@@ -347,6 +352,7 @@ async def get_system_status():
 @app.websocket("/ws/telemetry")
 async def websocket_telemetry(websocket: WebSocket):
     await manager.connect(websocket)
+    try:
         while True:
             data = await websocket.receive_text()
 
@@ -356,6 +362,7 @@ async def websocket_telemetry(websocket: WebSocket):
                 import tools.pc_tools as pc_tools
                 print(f"[VISION EXECUTING] Capturing screen for: {_user_raw}")
                 vision_out = pc_tools.run_screen_vision(_user_raw)
+                try:
                     await websocket.send_json({"type": "response", "message": vision_out, "status": "completed"})
                 except Exception:
                     pass
@@ -818,6 +825,7 @@ async def terminal_main() -> None:
     audio = AudioService()
     proactive_brain = None
 
+    try:
         await assistant_instance.start()
         print("\n==============================")
         print("    R.I.A.N. MASTER ONLINE    ")
@@ -828,11 +836,14 @@ async def terminal_main() -> None:
         )
         proactive_brain.start()
 
+        try:
             await audio.speak("Hello sir, mai RIAN hoon. Mai aapki kya madad karne ke liye ready hu")
         except Exception:
             pass
 
         while True:
+            try:
+                print("\n[1] Voice Command 🎤 | [2] Type Command ⌨️ | [3] Exit ❌")
                 mode = input("Select Mode (1/2/3): ").strip()
 
                 if mode == "3":
@@ -854,6 +865,7 @@ async def terminal_main() -> None:
 
                 response = await assistant_instance.process_query(query)
                 print(f"\n🤖 R.I.A.N. >> {response}")
+                try:
                     await audio.speak(response)
                 except Exception:
                     pass
@@ -891,6 +903,7 @@ class PCBridgeManager:
     async def execute_command(self, action: str, params: dict) -> dict:
         if not self.connected_pc:
             return {"status": "error", "message": "Laptop Bridge connected nahi hai."}
+        try:
             self._resp_future = asyncio.get_running_loop().create_future()
             await self.connected_pc.send_text(json.dumps({"action": action, "params": params}))
             res = await asyncio.wait_for(self._resp_future, timeout=25.0)
@@ -901,6 +914,7 @@ class PCBridgeManager:
             self._resp_future = None
 
     async def handle_response(self, data_str: str):
+        try:
             data = json.loads(data_str)
             if self._resp_future and not self._resp_future.done():
                 self._resp_future.set_result(data)
@@ -914,6 +928,7 @@ pc_tools.set_bridge_instance(pc_bridge)
 async def pc_bridge_route(websocket: WebSocket):
     await websocket.accept()
     await pc_bridge.register(websocket)
+    try:
         while True:
             data = await websocket.receive_text()
             await pc_bridge.handle_response(data)
@@ -949,6 +964,7 @@ async def system_greeting():
 
 @app.post("/api/voice-query")
 async def voice_query_handler(file: UploadFile = File(...)):
+    try:
         audio_bytes = await file.read()
         transcription = groq_voice_client.audio.transcriptions.create(
             file=("audio.webm", audio_bytes),
@@ -994,28 +1010,3 @@ if __name__ == "__main__":
         import uvicorn
 
         uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=True)
-
-import asyncio
-import json
-from fastapi import HTTPException
-
-active_bridge_ws = None
-
-
-import asyncio
-import json
-from fastapi import HTTPException
-
-active_bridge_ws = None
-
-@app.post("/inspect")
-async def inspect_screen():
-    global active_bridge_ws
-    if not active_bridge_ws:
-        raise HTTPException(status_code=400, detail="Local PC Bridge is not connected via WebSocket")
-    try:
-        await active_bridge_ws.send(json.dumps({"action": "inspect_screen", "params": {}}))
-        response_data = await asyncio.wait_for(active_bridge_ws.recv(), timeout=6.0)
-        return json.loads(response_data)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Screen inspection failed: {str(e)}")
