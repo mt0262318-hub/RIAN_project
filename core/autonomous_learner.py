@@ -29,25 +29,8 @@ class AutonomousLearner:
 
         if status == "success" and query.strip():
             try:
-                entry = f"Pattern: User '{query}' -> Executed via '{action_taken}'"
+                entry = fIPattern: User '{query}' -> Executed via '{action_taken}'"
                 if vector_db:
                     await asyncio.to_thread(vector_db.add_texts, [entry], [{"type": "auto_learn", "time": time.time()}])
                 self.learned_patterns_count += 1
-                self.add_test_log(f"ğŸ§  [LEARNED] Indexed: '{query[:20]}...'")
-            except Exception:
-                pass
-        elif status == "failed":
-            self.add_test_log(f"âš ï¸ [AUTO-HEAL] Analyzed failed: '{query[:20]}...'")
-
-    def add_test_log(self, text: str):
-        self.active_tests_log.append(f"[{time.strftime('%H:%M:%S')}] {text}")
-        if len(self.active_tests_log) > 25:
-            self.active_tests_log.pop(0)
-
-    def get_telemetry(self) -> Dict[str, Any]:
-        return {
-            "learned_patterns": self.learned_patterns_count,
-            "diagnostics_log": self.active_tests_log[-8:]
-        }
-
-autonomous_learner = AutonomousLearner()
+                self.add_test_log(f"ğŸ§¢´ÄT$äTEÒ–æFW†VC¢w·VW'•³£#×Òâââr"¢W†6WBW†6WF–öã ¢70¢VÆ–b7FGW2ÓÒ'f–ÆVB# ¢6VÆbæFE÷FW7EöÆör†b.(š´UDòÔ„TÅÒæÇ—¦VBf–ÆVC¢w·VW'•³£#×Òâââr" ¢FVbFE÷FW7EöÆör‡6VÆbÂFW‡C¢7G"“ ¢6VÆbæ7F—fU÷FW7G5öÆöræVæB†b%··F–ÖRç7G&gF–ÖR‚rTƒ¢TÓ¦W2r—ÕÒ·FW‡GÒ"¢–bÆVâ‡6VÆbæ7F—fU÷FW7G5öÆör’â#S ¢6VÆbæ7F—fU÷FW7G5öÆörç÷ƒ ¢FVbvWE÷FVÆVÖWG'’‡6VÆb’ÓâF–7E·7G"Âç•Ó ¢&WGW&â°¢&ÆV&æVE÷GFW&ç2#¢6VÆbæÆV&æVE÷GFW&ç5ö6÷VçBÀ¢&F–væ÷7F–75öÆör#¢6VÆbæ7F—fU÷FW7G5öÆöu²Óƒ¥Ğ¢Ğ ¦WFöæöÖ÷W5öÆV&æW"ÒWFöæöÖ÷W4ÆV&æW"‚
