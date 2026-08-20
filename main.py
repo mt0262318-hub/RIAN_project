@@ -559,7 +559,7 @@ async def serve_master_ui():
 
         /* LIVE DIAGNOSTICS & SELF-HEALING BOX (RED RECTANGLE AREA) */
         .desktop-diagnostics {
-            top: 135px; left: 25px; width: 340px; bottom: 85px; padding: 14px;
+            top: 175px; left: 25px; width: 340px; bottom: 25px; padding: 14px;
             display: flex; flex-direction: column;
             border-color: rgba(0, 255, 170, 0.5);
             box-shadow: 0 0 20px rgba(0, 255, 170, 0.2);
