@@ -1,7 +1,20 @@
 import psycopg2
 import os
+from dotenv import load_dotenv
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/postgres")
+# Load credentials from .env
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Fallback construction if individual vars are used in .env
+if not DATABASE_URL:
+    db_user = os.getenv("POSTGRES_USER", "postgres")
+    db_pass = os.getenv("POSTGRES_PASSWORD", "")
+    db_host = os.getenv("POSTGRES_HOST", "localhost")
+    db_port = os.getenv("POSTGRES_PORT", "5432")
+    db_name = os.getenv("POSTGRES_DB", "postgres")
+    DATABASE_URL = f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
 
 queries = """
 -- 1. Vault File Tracking Table
