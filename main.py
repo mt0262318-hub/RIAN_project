@@ -175,68 +175,68 @@ if vector_db:
         return "Context: Active Session Online"
 
     async def process_query(self, query: str, user_id: str = "default_user") -> str:
-        """Multi-Stage Intercept, Context Augment & LangGraph Execution"""
-            session = await session_manager
-            direct_action = await resolve_and_dispatch_action(query)
-            if direct_action:
-                return direct_action.get_or_create_session(user_id)
-            query_lower = query.lower().strip()
+    """Multi-Stage Intercept, Context Augment & LangGraph Execution"""
+    session = await session_manager
+    direct_action = await resolve_and_dispatch_action(query)
+    if direct_action:
+    return direct_action.get_or_create_session(user_id)
+    query_lower = query.lower().strip()
 
-           # Fast Context Interceptions: Persona Switch
-            detected_persona = persona_engine.detect_persona_switch(query)
-            if detected_persona:
-                active_profile = persona_engine.set_persona(user_id, detected_persona)
-                if detected_persona == "caring_companion":
-                    return "Arey bilkul! Ab se main tumhari caring companion ban kar baat karungi. Batao, kaisa raha aaj ka din? ❤️"
-                elif detected_persona == "companion_friend":
-                    return "Haan bhai! Ab se dost mode active hai. Bata kya chal raha hai?"
-                elif detected_persona == "finance_advisor":
-                    return "Understood. Wealth Strategist persona active. Share your financial query."
-                elif detected_persona == "tech_lead":
-                    return "Principal Architect mode active. Let's review the code and architecture."
-                else:
-                    return "Default R.I.A.N. Core mode restored."
-            # Fast Context Interceptions: Name registration
-            if "mera naam" in query_lower and ("hai" in query_lower or "rakh" in query_lower):
-                words = query_lower.split()
-                    idx = words.index("naam")
-                    name = words[idx + 1].replace("hai", "").replace("rakho", "").strip(".,!?")
-                    session.context["Name"] = name
-                    return f"Theek hai, maine yaad rakh liya hai ki aapka naam {name} hai."
-                except Exception:
-                    pass
+    # Fast Context Interceptions: Persona Switch
+    detected_persona = persona_engine.detect_persona_switch(query)
+    if detected_persona:
+    active_profile = persona_engine.set_persona(user_id, detected_persona)
+    if detected_persona == "caring_companion":
+    return "Arey bilkul! Ab se main tumhari caring companion ban kar baat karungi. Batao, kaisa raha aaj ka din? ❤️"
+    elif detected_persona == "companion_friend":
+    return "Haan bhai! Ab se dost mode active hai. Bata kya chal raha hai?"
+    elif detected_persona == "finance_advisor":
+    return "Understood. Wealth Strategist persona active. Share your financial query."
+    elif detected_persona == "tech_lead":
+    return "Principal Architect mode active. Let's review the code and architecture."
+    else:
+    return "Default R.I.A.N. Core mode restored."
+    # Fast Context Interceptions: Name registration
+    if "mera naam" in query_lower and ("hai" in query_lower or "rakh" in query_lower):
+    words = query_lower.split()
+    idx = words.index("naam")
+    name = words[idx + 1].replace("hai", "").replace("rakho", "").strip(".,!?")
+    session.context["Name"] = name
+    return f"Theek hai, maine yaad rakh liya hai ki aapka naam {name} hai."
+    except Exception:
+    pass
 
-            # Fast Context Interceptions: Name retrieval
-            if any(x in query_lower for x in ["mera naam kya", "what is my name", "who am i"]):
-                name = session.context.get("Name")
-                if name:
-                    return f"Aapka naam {name} hai."
-                return "Mujhe abhi aapka naam nahi pata. Kripya apna naam batayein."
+    # Fast Context Interceptions: Name retrieval
+    if any(x in query_lower for x in ["mera naam kya", "what is my name", "who am i"]):
+    name = session.context.get("Name")
+    if name:
+    return f"Aapka naam {name} hai."
+    return "Mujhe abhi aapka naam nahi pata. Kripya apna naam batayein."
 
-            # Code Sandbox Intent Interception
-            if query_lower.startswith("run code:") or query_lower.startswith("exec:"):
-                raw_code = query.split(":", 1)[1].strip()
-                sandbox_result = await asyncio.to_thread(sandbox.execute, raw_code)
-                return f"[Sandbox Execution Result]:\n{sandbox_result}"
+    # Code Sandbox Intent Interception
+    if query_lower.startswith("run code:") or query_lower.startswith("exec:"):
+    raw_code = query.split(":", 1)[1].strip()
+    sandbox_result = await asyncio.to_thread(sandbox.execute, raw_code)
+    return f"[Sandbox Execution Result]:\n{sandbox_result}"
 
-            # Memory Retrieval & Session Context Augmented Prompt
-            retrieved_memory = await self.retrieve_relevant_memory(query)
-            user_name = session.context.get("Name", "Unknown")
-            profile_text = f"User ID: {user_id}, Name: {user_name}, Memory: {retrieved_memory}"
-            enhanced_query = f"[System Context -> {profile_text}]\nUser Query: {query}"
+    # Memory Retrieval & Session Context Augmented Prompt
+    retrieved_memory = await self.retrieve_relevant_memory(query)
+    user_name = session.context.get("Name", "Unknown")
+    profile_text = f"User ID: {user_id}, Name: {user_name}, Memory: {retrieved_memory}"
+    enhanced_query = f"[System Context -> {profile_text}]\nUser Query: {query}"
 
-            # Async LangGraph Multi-Tool Execution
-            result = await asyncio.to_thread(
-                self.agent.invoke,
-                {"messages": [HumanMessage(content=enhanced_query)]},
-                {"recursion_limit": 8}
-            )
-            response = result["messages"][-1].content
-            return response
+    # Async LangGraph Multi-Tool Execution
+    result = await asyncio.to_thread(
+    self.agent.invoke,
+    {"messages": [HumanMessage(content=enhanced_query)]},
+    {"recursion_limit": 8}
+    )
+    response = result["messages"][-1].content
+    return response
 
     except Exception as e:
-            logger.error(f"Error processing agent query: {e}", exc_info=True)
-            return f"Processing me problem aayi: {str(e)}"
+    logger.error(f"Error processing agent query: {e}", exc_info=True)
+    return f"Processing me problem aayi: {str(e)}"
 
     async def start(self) -> None:
         await event_bus.start()
