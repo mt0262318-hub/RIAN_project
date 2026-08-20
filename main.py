@@ -169,7 +169,7 @@ if vector_db:
                 matches = await asyncio.to_thread(vector_db.search, query, top_k=2)
                 if matches:
                     return " | ".join([m.get("text", "") for m in matches])
-    except Exception as e:
+        except Exception as e:
             logger.warning(f"Vector search bypassed: {e}")
         return "Context: Active Session Online"
 
@@ -233,7 +233,7 @@ if vector_db:
             response = result["messages"][-1].content
             return response
 
-    except Exception as e:
+        except Exception as e:
             logger.error(f"Error processing agent query: {e}", exc_info=True)
             return f"Processing me problem aayi: {str(e)}"
 
@@ -895,7 +895,7 @@ class PCBridgeManager:
             await self.connected_pc.send_text(json.dumps({"action": action, "params": params}))
             res = await asyncio.wait_for(self._resp_future, timeout=25.0)
             return res
-    except Exception as e:
+        except Exception as e:
             return {"status": "error", "message": str(e)}
         finally:
             self._resp_future = None
@@ -904,7 +904,7 @@ class PCBridgeManager:
             data = json.loads(data_str)
             if self._resp_future and not self._resp_future.done():
                 self._resp_future.set_result(data)
-    except Exception as e:
+        except Exception as e:
             print(f"[BRIDGE PARSE ERROR] {e}")
 
 pc_bridge = PCBridgeManager()
@@ -1008,10 +1008,7 @@ from fastapi import HTTPException
 
 active_bridge_ws = None
 
-
-
 @app.post("/inspect")
-
 async def inspect_screen():
     global active_bridge_ws
     if not active_bridge_ws:
