@@ -52,7 +52,25 @@
     .container, .dashboard, .panel { flex-direction: column !important; width: 100% !important; margin: 0 !important; padding: 8px !important; }
 }
 </style>
+
+<style>
+/* R.I.A.N. Mobile Precise Responsive Fix */
+@media screen and (max-width: 768px) {
+    body, html {
+    }
+    /* Stack panels and force full width */
+    div, section, canvas, header, footer {
+    }
+    /* Target the 3D globe / canvas container */
+    canvas {
+    }
+    /* Make logs and system panels stack vertically */
+    .panel, .log-box, pre, code {
+    }
+}
+</style>
 </head>
+
 
 <body>
     <div id="canvas-container"></div>
