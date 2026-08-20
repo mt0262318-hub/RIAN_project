@@ -1,4 +1,30 @@
 
+def strip_all_thinking(text: str) -> str:
+    if not isinstance(text, str): return str(text)
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    text = re.sub(r"Here's a thinking process:.*?(?=\n\n|[A-Z][a-z]+:|$)", "", text, flags=re.DOTALL)
+    text = re.sub(r"\*\*[0-9]\..*?\*\*", "", text)
+    return text.strip()
+
+
+async def process_user_query_globally(query_text: str):
+    q = (query_text or "").lower().strip()
+    # Trigger Local PC Bridge
+    if "notepad" in q:
+        await safe_bridge_send({"action": "open_app", "target": "notepad"})
+        return "Done. Notepad is opening now."
+    elif "youtube" in q:
+        await safe_bridge_send({"action": "open_url", "target": "https://youtube.com"})
+        return "Opening YouTube."
+    elif "edge" in q or "browser" in q:
+        await safe_bridge_send({"action": "open_app", "target": "msedge"})
+        return "Launching Microsoft Edge."
+    elif "cmd" in q or "terminal" in q:
+        await safe_bridge_send({"action": "open_app", "target": "cmd"})
+        return "Terminal ready."
+    return None
+
+
 async def safe_bridge_send(payload: dict):
     if not hasattr(manager, "active_connections"):
         return
