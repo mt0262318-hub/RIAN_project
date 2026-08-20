@@ -145,6 +145,39 @@ class VoiceBiometricsEngine:
 # MASTER AUTONOMOUS ASSISTANT CORE
 # ==========================================
 class RIANAssistant:
+
+    async def process_user_query(self, prompt: str) -> str:
+        p_low = prompt.lower().strip()
+        
+        # 1. Direct YouTube Play Trigger
+        if "youtube" in p_low and any(k in p_low for k in ["play", "song", "search", "open"]):
+            query = p_low
+            for token in ["open youtube play song", "open youtube play", "open youtube search", "play song", "play", "open youtube", "on youtube"]:
+                query = query.replace(token, "")
+            query = query.strip()
+            if pc_bridge.connected_pc:
+                await pc_bridge.send_command("play_youtube", {"query": query})
+            await manager.broadcast({"type": "dashboard_log", "text": f"[RIAN] Playing {query} on YouTube."})
+            autonomous_learner.add_audit_entry(query=prompt, action_taken=f"play_youtube: {query}", status="success")
+            return f"Playing {query} on YouTube."
+
+        # 2. Direct App Launch Trigger
+        if p_low.startswith("open "):
+            target = p_low.replace("open ", "").strip()
+            if pc_bridge.connected_pc:
+                await pc_bridge.send_command("open_app", {"app_name": target})
+            await manager.broadcast({"type": "dashboard_log", "text": f"[RIAN] Opening {target} on system."})
+            autonomous_learner.add_audit_entry(query=prompt, action_taken=f"open_app: {target}", status="success")
+            return f"Opening {target} on your system."
+
+        # 3. LLM Fallback (Stripped)
+        raw_res = await self.brain.think_and_act(prompt)
+        reply = re.sub(r"<think>.*?</think>", "", str(raw_res), flags=re.DOTALL).strip()
+        if "Here's a thinking process" in reply:
+            reply = reply.split("\n\n")[-1]
+        await manager.broadcast({"type": "dashboard_log", "text": f"[RIAN] {reply}"})
+        return reply
+
     """Master Autonomous AI Engine for R.I.A.N. / J.I.V.A."""
 
     def __init__(self) -> None:
