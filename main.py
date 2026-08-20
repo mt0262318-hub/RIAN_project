@@ -1,3 +1,4 @@
+from services.workspace.workspace_router import workspace_router
 from services.vision.screen_router import screen_router
 from services.proactive.heartbeat_daemon import proactive_router
 from services.voice_stream.stream_router import stream_router
@@ -249,6 +250,7 @@ class RIANAssistant:
 assistant_instance = RIANAssistant()
 app = FastAPI(title="J.I.V.A. / R.I.A.N. Autonomous AI Master")
 app.include_router(ingress_bp)
+app.include_router(workspace_router)
 app.include_router(screen_router)
 app.include_router(proactive_router)
 app.include_router(stream_router)
