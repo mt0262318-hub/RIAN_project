@@ -751,6 +751,18 @@ async def serve_master_ui():
             connectSocket();
         };
     </script>
+
+    <div class="hud-glass desktop-diagnostics" style="position: absolute; top: 175px; left: 25px; width: 340px; bottom: 25px; padding: 14px; display: flex; flex-direction: column; z-index: 10; background: rgba(3, 15, 29, 0.85); border: 1px solid rgba(0, 255, 170, 0.5);">
+        <h4 style="color: #00ffaa; font-size: 13px; letter-spacing: 2px; margin-bottom: 8px;">AUTONOMOUS TESTING & REALTIME LOG</h4>
+        <div style="font-size: 11px; display: flex; justify-content: space-between; margin-bottom: 6px; color:#fff;"><span>MIC WATCHDOG:</span><span style="color:#00ffaa; font-weight:bold;">ACTIVE</span></div>
+        <div style="font-size: 11px; display: flex; justify-content: space-between; margin-bottom: 6px; color:#fff;"><span>PC BRIDGE:</span><span style="color:#00ffaa; font-weight:bold;">CONNECTED</span></div>
+        <div style="font-size: 11px; display: flex; justify-content: space-between; margin-bottom: 6px; color:#fff;"><span>PATTERNS LEARNED:</span><span style="color:#bd00ff; font-weight:bold;">0 ENTRIES</span></div>
+        <p style="font-size: 10px; color: #00ffaa; margin-top: 6px;">SECOND-BY-SECOND TEST RUNNER:</p>
+        <div style="flex: 1; margin-top: 6px; font-size: 10px; color: #88ffcc; background: rgba(0, 15, 12, 0.75); padding: 8px; border-radius: 4px; border: 1px solid rgba(0, 255, 170, 0.25); overflow-y: auto;" id="testStream">
+            <div>[SYSTEM] Telemetry Active & Synced.</div>
+        </div>
+    </div>
+
 </body>
 </html>"""
     return HTMLResponse(content=html_content)
