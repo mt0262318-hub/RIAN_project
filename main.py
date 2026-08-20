@@ -580,11 +580,15 @@ async def serve_master_ui():
 
         /* LIVE DIAGNOSTICS & SELF-HEALING BOX (RED RECTANGLE AREA) */
         .desktop-diagnostics {
-            top: 175px; left: 25px; width: 340px; bottom: 25px; padding: 14px;
-            display: flex; flex-direction: column;
-            border-color: rgba(0, 255, 170, 0.5);
-            box-shadow: 0 0 20px rgba(0, 255, 170, 0.2);
-        }
+    position: absolute;
+    top: 165px; left: 25px; width: 330px; bottom: 25px; padding: 14px;
+    display: flex; flex-direction: column;
+    border-radius: 8px;
+    background: rgba(0, 15, 25, 0.75);
+    border: 1px solid rgba(0, 255, 170, 0.4);
+    box-shadow: 0 0 20px rgba(0, 255, 170, 0.15);
+    z-index: 10;
+}
         .test-stream {
             flex: 1; margin-top: 6px; font-size: 10px; color: #88ffcc;
             background: rgba(0, 15, 12, 0.75); padding: 8px; border-radius: 4px;
@@ -611,8 +615,8 @@ async def serve_master_ui():
         .log-stream::-webkit-scrollbar-thumb { background: #00e5ff; border-radius: 2px; }
         .dt-node-1 { top: 40px; right: 410px; }
         .dt-node-2 { top: 120px; right: 400px; }
-        .dt-node-3 { top: 40px; left: 350px; white-space: nowrap; }
-        .dt-node-4 { top: 120px; left: 335px; white-space: nowrap; }
+        .dt-node-3 { position: absolute; top: 40px; left: 370px; white-space: nowrap; z-index: 10; }
+        .dt-node-4 { position: absolute; top: 110px; left: 350px; white-space: nowrap; z-index: 10; }
         .dt-node-5 { bottom: 130px; right: 90px; }
         .dt-node-6 { bottom: 65px; right: 110px; }
         .desktop-bottom-bar {
