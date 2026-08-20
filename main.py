@@ -690,8 +690,8 @@ async def serve_master_ui():
                     const lEl = document.getElementById("diagLearned");
                     if (lEl && packet.learned_patterns !== undefined) lEl.innerText = packet.learned_patterns + " ADAPTED";
                     const testBox = document.getElementById("testStream");
-                    if (testBox && packet.diagnostics_log) {
-                        testBox.innerHTML = packet.diagnostics_log.map(item => `<div>${item}</div>`).join("");
+                    if (testBox && packet.diagnostics_log && packet.diagnostics_log.length > 0) {
+                        testBox.innerHTML = packet.diagnostics_log.map(item => `<div style="margin-bottom:3px; border-bottom: 1px dotted rgba(0,255,170,0.15);">${item}</div>`).join("");
                         testBox.scrollTop = testBox.scrollHeight;
                     }
                 }
