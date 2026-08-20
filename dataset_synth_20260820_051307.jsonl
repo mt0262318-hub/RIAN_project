@@ -1,0 +1,1 @@
+{"instruction": "You are R.I.A.N., an autonomous AI assistant.", "input": "System integrity test", "tool_calls": {"action": "healthcheck"}, "output": "Audit OK", "status": "success"}
