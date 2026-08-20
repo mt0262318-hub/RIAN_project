@@ -165,11 +165,11 @@ class RIANAssistant:
             logger.warning(f"Vector search bypassed: {e}")
         return "Context: Active Session Online"
 
-        async def process_query(self, query: str, user_id: str = "default_user") -> str:
+            async def process_query(self, query: str, user_id: str = "default_user") -> str:
         try:
             q_low = (query or "").lower().strip()
             
-            # --- FORCE DIRECT PC BRIDGE DISPATCH ---
+            # 1. DIRECT SYSTEM & APP LAUNCH GUARD
             if "youtube" in q_low and any(k in q_low for k in ["play", "chalao", "song", "baja", "search"]):
                 search_kw = q_low.replace("open youtube play song", "").replace("open youtube play", "").replace("play song", "").replace("open youtube", "").replace("play", "").replace("search", "").strip()
                 await pc_bridge.execute_command("play_youtube", {"query": search_kw})
@@ -188,8 +188,8 @@ class RIANAssistant:
                 return "Telegram open kar diya hai."
 
             session = await session_manager.get_or_create_session(user_id)
-            
-            if query_lower.startswith("run code:") or query_lower.startswith("exec:"):
+
+            if q_low.startswith("run code:") or q_low.startswith("exec:"):
                 raw_code = query.split(":", 1)[1].strip()
                 sandbox_result = await asyncio.to_thread(sandbox.execute, raw_code)
                 return f"[Sandbox Execution Result]:
