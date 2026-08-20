@@ -1,3 +1,11 @@
+
+def clean_llm_output(text: str) -> str:
+    if not isinstance(text, str):
+        return str(text)
+    # Remove <think> blocks cleanly
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    return text.strip()
+
 from services.ingress_router import ingress_bp
 from tools.vault_tool_schema import VAULT_TOOLS, handle_vault_call
 from langchain_core.messages import SystemMessage, HumanMessage
