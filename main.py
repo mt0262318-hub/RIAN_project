@@ -887,6 +887,12 @@ async def serve_master_ui():
         }
 
         function forceSelfHeal(e) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({type: "self_heal_trigger"}));
+    }
+    const tb = document.getElementById("testStream");
+    if(tb) tb.innerHTML += "<div style="color:#00ffaa;">[MANUAL PULSE] Diagnostic Sweep Triggered OK</div>";
+
             if (e) e.stopPropagation();
             document.getElementById("diagHeal").innerText = new Date().toLocaleTimeString();
             connectSocket();
