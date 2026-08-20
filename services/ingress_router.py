@@ -14,10 +14,6 @@ class EmailPayload(BaseModel):
 
 @ingress_bp.post("/twilio/voice")
 async def twilio_voice_webhook(request: Request):
-    """
-    Handles inbound voice calls from Twilio.
-    Returns standard TwiML XML to speak back to the caller.
-    """
     form_data = await request.form()
     caller = form_data.get("From", "Unknown")
     speech_result = form_data.get("SpeechResult", None)
@@ -25,11 +21,9 @@ async def twilio_voice_webhook(request: Request):
     logger.info(f"📞 Inbound Call from: {caller} | Query: {speech_result}")
     
     if speech_result:
-        # User spoke something -> AI Response simulation
-        reply_text = f"Hello. Rian system received your command: {speech_result}. Processing request."
+        reply_text = f"Received command: {speech_result}. Rian is processing."
     else:
-        # Initial greeting when phone picks up
-        reply_text = "Namaste, this is Rian Autonomous System. How can I assist you today?"
+        reply_text = "Namaste, this is Rian Autonomous System. How can I assist you?"
 
     twiml_response = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -39,17 +33,13 @@ async def twilio_voice_webhook(request: Request):
 
     return Response(content=twiml_response, media_type="application/xml")
 
-
 @ingress_bp.post("/email/hook")
 async def email_inbound_webhook(payload: EmailPayload):
-    """
-    Handles inbound parsed emails (SendGrid / Mailgun / Webhook).
-    """
     logger.info(f"📧 Inbound Email from {payload.sender} - Subject: {payload.subject}")
-    # Process through RIAN agent memory
     return {
         "status": "success",
         "processed": True,
         "sender": payload.sender,
+        "subject": payload.subject,
         "message": "Email ingested into RIAN processing pipeline."
     }
