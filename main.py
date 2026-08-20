@@ -26,6 +26,15 @@ from core.persona_manager import persona_engine
 load_dotenv()
 
 # --- Request Cache & Execution Locks (Loop/Echo Preventer) ---
+def clean_llm_response(text: str) -> str:
+    if not isinstance(text, str):
+        return str(text)
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    text = re.sub(r"Here\'s a thinking process:.*?(?=\n\n|[A-Z][a-z]+:|$)", "", text, flags=re.DOTALL)
+    text = re.sub(r"\*\*Analyze User Input:\*\*.*?(?=\n\n|[A-Z][a-z]+:|$)", "", text, flags=re.DOTALL)
+    text = re.sub(r"(\*\*Draft.*|\*Draft.*|Output Generation:.*|\[USER\].*|\[RIAN\].*)", "", text, flags=re.DOTALL)
+    text = re.sub(r"\*\*Final Output:\*\*.*", "", text, flags=re.DOTALL)
+    return text.strip()
 processed_requests = {}
 session_locks = {}
 
