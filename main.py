@@ -226,7 +226,16 @@ class RIANAssistant:
                 {"recursion_limit": 8}
             )
             response = result["messages"][-1].content
-            return response
+            
+    # Strip LLM thinking tokens
+    import re
+    if isinstance(response, str):
+        response = re.sub(r"<think>.*?</think>", "", response, flags=re.DOTALL).strip()
+    elif isinstance(response, dict) and "response" in response:
+        if isinstance(response["response"], str):
+            response["response"] = re.sub(r"<think>.*?</think>", "", response["response"], flags=re.DOTALL).strip()
+
+    return response
 
         except Exception as e:
             logger.error(f"Error processing agent query: {e}", exc_info=True)
