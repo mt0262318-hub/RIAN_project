@@ -1,4 +1,14 @@
 
+def sanitize_rian_response(text: str) -> str:
+    if not isinstance(text, str):
+        return str(text)
+    # Remove thought blocks and prompt echo
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    text = re.sub(r"(\*\*Draft.*|\*Draft.*|Output Generation:.*|\[USER\].*|\[RIAN\].*)", "", text, flags=re.DOTALL)
+    text = text.split("[USER]")[0].split("Output Generation:")[0]
+    return text.strip()
+
+
 SYSTEM_INSTRUCTION = """You are R.I.A.N., an elite AI assistant.
 Directives:
 1. Speak in natural, crisp Hinglish/English.
