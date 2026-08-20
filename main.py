@@ -590,8 +590,8 @@ async def serve_master_ui():
         .log-stream::-webkit-scrollbar-thumb { background: #00e5ff; border-radius: 2px; }
         .dt-node-1 { top: 40px; right: 410px; }
         .dt-node-2 { top: 120px; right: 400px; }
-        .dt-node-3 { bottom: 180px; left: 390px; }
-        .dt-node-4 { bottom: 110px; left: 410px; }
+        .dt-node-3 { top: 40px; left: 390px; }
+        .dt-node-4 { top: 120px; left: 400px; }
         .dt-node-5 { bottom: 130px; right: 90px; }
         .dt-node-6 { bottom: 65px; right: 110px; }
         .desktop-bottom-bar {
