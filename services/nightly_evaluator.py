@@ -67,8 +67,8 @@ def run_nightly_reflection():
 
     # Vault Integration: upload & local purge
     try:
-        from tools.vault_storage import upload_to_telegram_vault
-        upload_to_telegram_vault(dataset_filename, category="training_dataset")
+        from tools.vault_storage import upload_file
+        upload_file(dataset_filename, caption="RIAN Synthetic Dataset")
         if os.path.exists(dataset_filename):
             os.remove(dataset_filename)
         print(f"🚀 Synced {dataset_filename} to Cloud Vault & Purged locally!")
