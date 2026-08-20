@@ -1,3 +1,4 @@
+cat << 'EOF' > main.py
 import os
 import sys
 import io
@@ -60,12 +61,10 @@ class PCBridgeManager:
         self.connected_pc = websocket
         self.main_loop = asyncio.get_running_loop()
         logger.info("⚡ [PC BRIDGE] Physical Laptop connected successfully!")
-        print("⚡ [PC BRIDGE] Physical Laptop connected successfully!")
 
     def disconnect(self):
         self.connected_pc = None
         logger.warning("⚠️ [PC BRIDGE] Laptop disconnected.")
-        print("⚠️ [PC BRIDGE] Laptop disconnected.")
 
     async def execute_command(self, action: str, params: dict = None) -> dict:
         if not self.connected_pc:
@@ -113,7 +112,6 @@ def clean_llm_response(text: str) -> str:
 async def resolve_and_dispatch_action(query: str) -> Optional[str]:
     q = (query or "").lower().strip()
     
-    # 1. YouTube Play with song/query extraction
     if "youtube" in q and any(k in q for k in ["play", "chalao", "song", "baja"]):
         search_kw = q.replace("open", "").replace("youtube", "").replace("play", "").replace("song", "").replace("chalao", "").strip()
         await pc_bridge.execute_command("play_youtube", {"query": search_kw})
@@ -122,44 +120,38 @@ async def resolve_and_dispatch_action(query: str) -> Optional[str]:
         await pc_bridge.execute_command("launch_target", {"target": "youtube"})
         return "YouTube open ho gaya."
 
-    # 2. Notepad
     elif "notepad" in q:
         await pc_bridge.execute_command("launch_target", {"target": "notepad"})
         return "Notepad open kar diya hai."
 
-    # 3. Telegram
     elif "telegram" in q:
         await pc_bridge.execute_command("launch_target", {"target": "telegram"})
         return "Telegram open kar diya hai."
 
-    # 4. Chrome / Edge Browser
     elif "edge" in q or "browser" in q or "chrome" in q:
         await pc_bridge.execute_command("launch_target", {"target": "chrome"})
         return "Browser launch ho raha hai."
 
-    # 5. Terminal / CMD
     elif "cmd" in q or "terminal" in q:
         await pc_bridge.execute_command("launch_target", {"target": "cmd"})
         return "Command Prompt start kar diya hai."
 
-    # 6. Calculator
     elif "calc" in q or "calculator" in q:
         await pc_bridge.execute_command("launch_target", {"target": "calc"})
         return "Calculator open kar diya hai."
 
-    # 7. Media Controls
-    elif any(k in q for k in ["skip song", "next song", "gaana badlo", "next track"]):
+    elif any(k in q for k in ["skip song", "next song", "gaana badlo"]):
         await pc_bridge.execute_command("skip_song", {})
         return "Next song par skip kar diya."
-    elif any(k in q for k in ["pause", "stop song", "play song", "toggle music"]):
+    elif any(k in q for k in ["pause", "stop song", "play song"]):
         await pc_bridge.execute_command("media_control", {"command": "play_pause"})
         return "Playback toggle kar diya."
-    elif any(k in q for k in ["volume up", "awaaz badhao", "awaz badhao"]):
+    elif any(k in q for k in ["volume up", "awaaz badhao"]):
         await pc_bridge.execute_command("media_control", {"command": "volume_up"})
-        return "Volume increase kar diya."
-    elif any(k in q for k in ["volume down", "awaaz kam karo", "awaz kam"]):
+        return "Volume badha diya."
+    elif any(k in q for k in ["volume down", "awaaz kam"]):
         await pc_bridge.execute_command("media_control", {"command": "volume_down"})
-        return "Volume decrease kar diya."
+        return "Volume kam kar diya."
     
     return None
 
@@ -198,28 +190,6 @@ def get_or_create_history(session_id: str) -> List[Any]:
         conversation_history[session_id] = []
     return conversation_history[session_id]
 
-async def generate_rian_response(user_id: str, user_query: str, llm_instance) -> str:
-    direct_act = await resolve_and_dispatch_action(user_query)
-    if direct_act:
-        return direct_act
-
-    history = get_or_create_history(user_id)
-    messages = [SystemMessage(content=RIAN_SYSTEM_PROMPT)]
-    messages.extend(history[-8:])
-    current_user_msg = HumanMessage(content=user_query)
-    messages.append(current_user_msg)
-
-    response = await llm_instance.ainvoke(messages)
-    clean_reply = clean_llm_response(response.content)
-
-    history.append(current_user_msg)
-    history.append(HumanMessage(content=clean_reply))
-
-    if len(history) > 20:
-        conversation_history[user_id] = history[-10:]
-
-    return clean_reply
-
 class RIANAssistant:
     def __init__(self) -> None:
         logger.info("Initializing R.I.A.N. Assistant Master Core (Complete Spec)...")
@@ -243,13 +213,11 @@ class RIANAssistant:
         self.agent = build_agent_graph(self.llm, self.active_tools)
         self.monitor = SystemMonitor()
         self.memory_cache: Dict[str, Any] = {}
-        logger.info(f"Loaded {len(self.active_tools)} tools into Agent Execution Graph successfully.")
 
     async def handle_alert(self, event: Event) -> None:
         alert_type = event.payload.get("alert_type")
         message = event.payload.get("message")
         logger.warning(f"ALERT [{alert_type}]: {message}")
-        print(f"\n[SYSTEM ALERT] {message}")
 
     async def retrieve_relevant_memory(self, query: str) -> str:
         try:
@@ -403,6 +371,7 @@ async def get_system_status():
         "status": "ONLINE",
         "neural_link": "ESTABLISHED",
         "voice_biometrics": "LOCKED_OWNER",
+        "pc_bridge_connected": pc_bridge.connected_pc is not None,
         "active_tools_count": len(assistant_instance.active_tools),
         "timestamp": time.time()
     }
@@ -433,6 +402,17 @@ async def websocket_telemetry(websocket: WebSocket):
                 payload = json.loads(data)
             except Exception:
                 payload = {"query": data}
+
+            # Health Check Ping
+            if payload.get("type") == "health_check":
+                await websocket.send_json({
+                    "type": "health_status",
+                    "bridge_online": pc_bridge.connected_pc is not None,
+                    "server_online": True,
+                    "tools_count": len(assistant_instance.active_tools),
+                    "timestamp": time.time()
+                })
+                continue
 
             query = payload.get("query", payload.get("text", "")).strip()
             user_id = payload.get("user_id", "web_user_01")
@@ -531,7 +511,7 @@ async def serve_master_ui():
         body { background: #000308; color: #00e5ff; overflow: hidden; height: 100vh; width: 100vw; position: relative; }
         #canvas3d { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .hud-glass {
-            background: rgba(3, 15, 29, 0.75);
+            background: rgba(3, 15, 29, 0.85);
             border: 1px solid rgba(0, 229, 255, 0.45);
             box-shadow: 0 0 25px rgba(0, 229, 255, 0.2), inset 0 0 15px rgba(0, 229, 255, 0.1);
             border-radius: 8px;
@@ -555,6 +535,25 @@ async def serve_master_ui():
         .desktop-status { top: 25px; left: 30px; width: 280px; padding: 18px; }
         .desktop-status h3 { font-size: 16px; letter-spacing: 3px; margin-bottom: 8px; text-shadow: 0 0 10px #00e5ff; }
         .desktop-status p { font-size: 11px; line-height: 1.7; color: #9feeff; }
+
+        /* LIVE DIAGNOSTICS & SELF-HEALING BOX (RED RECTANGLE AREA) */
+        .desktop-diagnostics {
+            top: 155px; left: 30px; width: 280px; padding: 16px;
+            border-color: rgba(0, 255, 170, 0.5);
+            box-shadow: 0 0 20px rgba(0, 255, 170, 0.2);
+        }
+        .desktop-diagnostics h4 { font-size: 13px; letter-spacing: 2px; color: #00ffaa; margin-bottom: 8px; }
+        .diag-item { font-size: 11px; display: flex; justify-content: space-between; margin-bottom: 6px; }
+        .diag-val-ok { color: #00ffaa; font-weight: bold; }
+        .diag-val-warn { color: #ffcc00; font-weight: bold; }
+        .diag-val-err { color: #ff3366; font-weight: bold; }
+        .self-heal-btn {
+            width: 100%; margin-top: 8px; background: rgba(0, 255, 170, 0.2);
+            border: 1px solid #00ffaa; color: #00ffaa; font-size: 11px; font-weight: bold;
+            padding: 6px 0; border-radius: 4px; cursor: pointer; transition: 0.2s;
+        }
+        .self-heal-btn:hover { background: #00ffaa; color: #000; box-shadow: 0 0 12px #00ffaa; }
+
         .desktop-logs { top: 40px; right: 30px; width: 360px; padding: 18px; }
         .desktop-logs h4 { font-size: 14px; letter-spacing: 2px; margin-bottom: 8px; }
         .log-stream { font-size: 11px; color: #7ce8ff; max-height: 160px; overflow-y: auto; line-height: 1.6; }
@@ -595,6 +594,17 @@ async def serve_master_ui():
             <p>NEURAL LINK: ESTABLISHED</p>
             <p>VOICE LOCK: <span style="color:#00ffaa;">ACTIVE (OWNER)</span></p>
         </div>
+
+        <!-- NEW REAL-TIME DIAGNOSTIC & SELF-HEAL BOX -->
+        <div class="hud-glass desktop-diagnostics">
+            <h4>LIVE SYSTEM HEALTH</h4>
+            <div class="diag-item"><span>MIC WATCHDOG:</span><span id="diagMic" class="diag-val-warn">STARTING...</span></div>
+            <div class="diag-item"><span>PC BRIDGE:</span><span id="diagBridge" class="diag-val-warn">CHECKING...</span></div>
+            <div class="diag-item"><span>TELEMETRY WS:</span><span id="diagWS" class="diag-val-warn">CONNECTING...</span></div>
+            <div class="diag-item"><span>LAST RECOVERY:</span><span id="diagHeal" style="color:#9feeff;">ACTIVE</span></div>
+            <button class="self-heal-btn" onclick="forceSelfHeal(event)">⚡ FORCE SELF-HEAL</button>
+        </div>
+
         <div class="memory-badge dt-node-1">[MEMORY] User_Prefs</div>
         <div class="memory-badge dt-node-2">[CONTEXT] project_Pure_Bal</div>
         <div class="memory-badge dt-node-3">[CONTEXT] Gaura_Purey_Badal</div>
@@ -619,14 +629,38 @@ async def serve_master_ui():
         </div>
     </div>
     <script>
-        let ws, recognition, voiceStarted = false;
+        let ws, recognition, isSpeakingTTS = false, watchdogTimer = null;
+
+        function updateDiag(id, status, cls) {
+            const el = document.getElementById(id);
+            if (el) { el.innerText = status; el.className = cls; }
+        }
+
         function connectSocket() {
             const loc = window.location;
             const wsProtocol = loc.protocol === "https:" ? "wss://" : "ws://";
             ws = new WebSocket(wsProtocol + loc.host + "/ws/telemetry");
+
+            ws.onopen = function() {
+                updateDiag("diagWS", "CONNECTED", "diag-val-ok");
+                setInterval(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: "health_check" }));
+                    }
+                }, 4000);
+            };
+
             ws.onmessage = function(e) {
                 const packet = JSON.parse(e.data);
                 const logBox = document.getElementById("desktopLogStream");
+
+                if (packet.type === "health_status") {
+                    if (packet.bridge_online) {
+                        updateDiag("diagBridge", "CONNECTED (ONLINE)", "diag-val-ok");
+                    } else {
+                        updateDiag("diagBridge", "OFFLINE (RUN local_bridge.py)", "diag-val-err");
+                    }
+                }
                 if (packet.type === "log" && logBox) {
                     logBox.innerHTML += `<div>[USER] ${packet.log}</div>`;
                     logBox.scrollTop = logBox.scrollHeight;
@@ -642,7 +676,10 @@ async def serve_master_ui():
                     if (document.getElementById("desktopStatus")) document.getElementById("desktopStatus").innerText = packet.state_text;
                 }
             };
-            ws.onclose = () => setTimeout(connectSocket, 2000);
+            ws.onclose = () => {
+                updateDiag("diagWS", "DISCONNECTED", "diag-val-err");
+                setTimeout(connectSocket, 2000);
+            };
         }
 
         const scene = new THREE.Scene();
@@ -690,14 +727,12 @@ async def serve_master_ui():
         });
 
         function engageContinuousVoice() {
-            if (voiceStarted) return;
-            voiceStarted = true;
-            vocalizeOutput("Systems online Manish. Ready for commands.");
-            startVoiceLoop();
+            startContinuousVoiceEngine();
         }
 
         function vocalizeOutput(text) {
             if ('speechSynthesis' in window) {
+                isSpeakingTTS = true;
                 window.speechSynthesis.cancel();
                 window.speechSynthesis.resume();
                 let clean = text.replace(/\[.*?\]/g, '').replace(/[*#_`]/g, '').trim();
@@ -708,32 +743,103 @@ async def serve_master_ui():
                 let voices = window.speechSynthesis.getVoices();
                 let v = voices.find(vox => vox.lang.includes('hi') || vox.lang.includes('IN')) || voices[0];
                 if (v) utt.voice = v;
+
+                utt.onend = () => {
+                    isSpeakingTTS = false;
+                    setTimeout(safeRestartRecognition, 300);
+                };
+                utt.onerror = () => {
+                    isSpeakingTTS = false;
+                    setTimeout(safeRestartRecognition, 300);
+                };
                 window.speechSynthesis.speak(utt);
             }
         }
 
-        function startVoiceLoop() {
+        // ROCK-SOLID CONTINUOUS VOICE ENGINE WITH ZERO-FREEZE WATCHDOG
+        function startContinuousVoiceEngine() {
             const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechAPI) return;
+            if (!SpeechAPI) {
+                updateDiag("diagMic", "UNSUPPORTED", "diag-val-err");
+                return;
+            }
+
+            if (recognition) {
+                try { recognition.stop(); } catch(e){}
+            }
+
             recognition = new SpeechAPI();
             recognition.continuous = true;
             recognition.interimResults = true;
             recognition.lang = 'en-US';
+
+            recognition.onstart = function() {
+                updateDiag("diagMic", "LISTENING (ACTIVE)", "diag-val-ok");
+                if (document.getElementById("desktopStatus")) {
+                    document.getElementById("desktopStatus").innerText = "LISTENING... (Continuous Stream Active)";
+                }
+            };
+
             recognition.onresult = function(evt) {
+                if (isSpeakingTTS) return;
                 let speechText = '';
                 for (let i = evt.resultIndex; i < evt.results.length; ++i) {
                     speechText += evt.results[i][0].transcript;
                 }
                 const activeInput = document.getElementById('desktopInput');
                 if (activeInput) activeInput.value = speechText;
+
                 if (evt.results[evt.results.length - 1].isFinal) {
                     sendPrompt(speechText, 'desktopInput');
                 }
             };
-            recognition.onerror = () => setTimeout(() => { try { recognition.start(); } catch(e){} }, 800);
-            recognition.onend = () => { try { recognition.start(); } catch(e){} };
+
+            recognition.onerror = function(err) {
+                if (err.error !== 'no-speech') {
+                    updateDiag("diagMic", "RECOVERING...", "diag-val-warn");
+                }
+                setTimeout(safeRestartRecognition, 600);
+            };
+
+            recognition.onend = function() {
+                if (!isSpeakingTTS) {
+                    setTimeout(safeRestartRecognition, 300);
+                }
+            };
+
             try { recognition.start(); } catch(e){}
-            if (document.getElementById("desktopStatus")) document.getElementById("desktopStatus").innerText = "LISTENING... (Continuous Stream Active)";
+
+            // Watchdog Loop: Checks every 3s if mic is active
+            if (!watchdogTimer) {
+                watchdogTimer = setInterval(() => {
+                    if (!isSpeakingTTS) {
+                        try { recognition.start(); } catch(e){}
+                    }
+                }, 3000);
+            }
+        }
+
+        function safeRestartRecognition() {
+            if (isSpeakingTTS) return;
+            try {
+                recognition.start();
+                updateDiag("diagMic", "LISTENING (ACTIVE)", "diag-val-ok");
+            } catch(e) {
+                if (e.name !== "InvalidStateError") {
+                    updateDiag("diagMic", "ACTIVE", "diag-val-ok");
+                }
+            }
+        }
+
+        function forceSelfHeal(e) {
+            if (e) e.stopPropagation();
+            document.getElementById("diagHeal").innerText = new Date().toLocaleTimeString();
+            connectSocket();
+            startContinuousVoiceEngine();
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+            vocalizeOutput("Neural Link and Voice Watchdog re-calibrated.");
         }
 
         function handleEnter(e, inputId) {
@@ -751,7 +857,11 @@ async def serve_master_ui():
                 document.getElementById(inputId).value = "";
             }
         }
-        window.onload = function() { connectSocket(); };
+
+        window.onload = function() {
+            connectSocket();
+            setTimeout(startContinuousVoiceEngine, 500);
+        };
     </script>
 </body>
 </html>"""
@@ -820,3 +930,5 @@ if __name__ == "__main__":
     else:
         import uvicorn
         uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=True)
+EOF
+docker restart rian_fastapi
