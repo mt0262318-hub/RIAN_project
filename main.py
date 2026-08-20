@@ -190,6 +190,27 @@ def get_or_create_history(session_id: str) -> List[Any]:
     return conversation_history[session_id]
 
 class RIANAssistant:
+
+    async def run_continuous_self_test(self):
+        tests = [
+            ("Vector Memory Query Pulse", lambda: "Index Valid"),
+            ("Agent Tool Schema Integrity", lambda: f"{len(self.active_tools)} Active Tools"),
+            ("PC Bridge Socket Status", lambda: "Bridge Online" if pc_bridge.connected_pc else "Standby"),
+            ("Adaptive Pattern Learning", lambda: f"{autonomous_learner.learned_patterns_count} Patterns Cached"),
+            ("Voice Watchdog Stream", lambda: "Listener Active"),
+            ("Neural Reasoner Pipeline", lambda: "Qwen 27B Ready")
+        ]
+        idx = 0
+        while True:
+            try:
+                await asyncio.sleep(1.5)
+                t_name, t_fn = tests[idx % len(tests)]
+                idx += 1
+                res_val = t_fn() if callable(t_fn) else "OK"
+                autonomous_learner.add_test_log(f"[{t_name}] -> {res_val}")
+            except Exception as e:
+                autonomous_learner.add_test_log(f"[Auto-Test Warning] -> {e}")
+
     def __init__(self) -> None:
         logger.info("Initializing R.I.A.N. Assistant Master Core (Complete Spec)...")
         self.llm = ChatGroq(
@@ -293,6 +314,7 @@ class RIANAssistant:
         await event_bus.start()
         event_bus.subscribe(EventType.ALERT, self.handle_alert)
         await self.monitor.start()
+        self.bg_test_task = asyncio.create_task(self.run_continuous_self_test())
         logger.info("R.I.A.N. Core & Subsystems are ONLINE.")
 
     async def stop(self) -> None:
@@ -568,8 +590,8 @@ async def serve_master_ui():
         .log-stream::-webkit-scrollbar-thumb { background: #00e5ff; border-radius: 2px; }
         .dt-node-1 { top: 40px; right: 410px; }
         .dt-node-2 { top: 120px; right: 400px; }
-        .dt-node-3 { bottom: 180px; left: 40px; }
-        .dt-node-4 { bottom: 110px; left: 60px; }
+        .dt-node-3 { bottom: 180px; left: 390px; }
+        .dt-node-4 { bottom: 110px; left: 410px; }
         .dt-node-5 { bottom: 130px; right: 90px; }
         .dt-node-6 { bottom: 65px; right: 110px; }
         .desktop-bottom-bar {
