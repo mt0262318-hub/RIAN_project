@@ -43,7 +43,17 @@
         button:hover { background: #00ffff; color: #030712; }
         .mic-active { background: #ff0055 !important; color: #ffffff !important; border-color: #ff0055 !important; box-shadow: 0 0 15px #ff0055; }
     </style>
+
+<style>
+/* Auto-Responsive Universal Fix */
+@media screen and (max-width: 768px) {
+    body, html { overflow-x: hidden; width: 100%; }
+    div, section, main { max-width: 100% !important; box-sizing: border-box; }
+    .container, .dashboard, .panel { flex-direction: column !important; width: 100% !important; margin: 0 !important; padding: 8px !important; }
+}
+</style>
 </head>
+
 <body>
     <div id="canvas-container"></div>
     <div class="hud-layer">
