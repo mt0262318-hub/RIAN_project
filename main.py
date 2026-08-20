@@ -1,4 +1,16 @@
 
+async def safe_bridge_send(payload: dict):
+    if not hasattr(manager, "active_connections"):
+        return
+    import json
+    msg = json.dumps(payload)
+    for conn in list(manager.active_connections):
+        try:
+            await conn.send_text(msg)
+        except Exception:
+            pass
+
+
 def clean_llm_text(text: str) -> str:
     if not isinstance(text, str): return str(text)
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
@@ -11,16 +23,16 @@ def clean_llm_text(text: str) -> str:
 async def trigger_pc_bridge(query_str: str):
     q = (query_str or "").lower().strip()
     if "notepad" in q:
-        await manager.broadcast({"action": "open_app", "target": "notepad"})
+        await safe_bridge_send({"action": "open_app", "target": "notepad"})
         return "Done. Notepad opening now."
     elif "youtube" in q:
-        await manager.broadcast({"action": "open_url", "target": "https://youtube.com"})
+        await safe_bridge_send({"action": "open_url", "target": "https://youtube.com"})
         return "Done. Opening YouTube."
     elif "edge" in q or "browser" in q:
-        await manager.broadcast({"action": "open_app", "target": "msedge"})
+        await safe_bridge_send({"action": "open_app", "target": "msedge"})
         return "Done. Microsoft Edge launch ho raha hai."
     elif "cmd" in q or "terminal" in q:
-        await manager.broadcast({"action": "open_app", "target": "cmd"})
+        await safe_bridge_send({"action": "open_app", "target": "cmd"})
         return "Done. Terminal ready hai."
     return None
 
@@ -36,16 +48,16 @@ def clean_response(text: str) -> str:
 async def handle_direct_action(txt: str):
     t = (txt or "").lower().strip()
     if "notepad" in t:
-        await manager.broadcast({"action": "open_app", "target": "notepad"})
+        await safe_bridge_send({"action": "open_app", "target": "notepad"})
         return "Notepad khol raha hoon."
     elif "youtube" in t:
-        await manager.broadcast({"action": "open_url", "target": "https://youtube.com"})
+        await safe_bridge_send({"action": "open_url", "target": "https://youtube.com"})
         return "YouTube open ho gaya."
     elif "edge" in t or "browser" in t:
-        await manager.broadcast({"action": "open_app", "target": "msedge"})
+        await safe_bridge_send({"action": "open_app", "target": "msedge"})
         return "Microsoft Edge launch ho raha hai."
     elif "cmd" in t or "terminal" in t:
-        await manager.broadcast({"action": "open_app", "target": "cmd"})
+        await safe_bridge_send({"action": "open_app", "target": "cmd"})
         return "Command Prompt ready hai."
     return None
 
@@ -53,16 +65,16 @@ async def handle_direct_action(txt: str):
 async def execute_bridge_action(raw_text: str):
     txt = (raw_text or "").lower()
     if "notepad" in txt:
-        await manager.broadcast({"action": "open_app", "target": "notepad"})
+        await safe_bridge_send({"action": "open_app", "target": "notepad"})
         return "Opening Notepad for you."
     elif "youtube" in txt:
-        await manager.broadcast({"action": "open_url", "target": "https://youtube.com"})
+        await safe_bridge_send({"action": "open_url", "target": "https://youtube.com"})
         return "Opening YouTube now."
     elif "edge" in txt or "browser" in txt:
-        await manager.broadcast({"action": "open_app", "target": "msedge"})
+        await safe_bridge_send({"action": "open_app", "target": "msedge"})
         return "Opening Microsoft Edge."
     elif "cmd" in txt or "terminal" in txt:
-        await manager.broadcast({"action": "open_app", "target": "cmd"})
+        await safe_bridge_send({"action": "open_app", "target": "cmd"})
         return "Launching Terminal."
     return None
 
@@ -403,16 +415,16 @@ async def chat_api_clean(request: Request):
     
     # 1. OS Direct Bridge Triggers
     if "notepad" in q_low:
-        await manager.broadcast({"action": "open_app", "target": "notepad"})
+        await safe_bridge_send({"action": "open_app", "target": "notepad"})
         return {"status": "success", "user_id": user_id, "response": "Done. Notepad is opening now."}
     elif "youtube" in q_low:
-        await manager.broadcast({"action": "open_url", "target": "https://youtube.com"})
+        await safe_bridge_send({"action": "open_url", "target": "https://youtube.com"})
         return {"status": "success", "user_id": user_id, "response": "Opening YouTube."}
     elif "edge" in q_low or "browser" in q_low:
-        await manager.broadcast({"action": "open_app", "target": "msedge"})
+        await safe_bridge_send({"action": "open_app", "target": "msedge"})
         return {"status": "success", "user_id": user_id, "response": "Launching Microsoft Edge."}
     elif "cmd" in q_low or "terminal" in q_low:
-        await manager.broadcast({"action": "open_app", "target": "cmd"})
+        await safe_bridge_send({"action": "open_app", "target": "cmd"})
         return {"status": "success", "user_id": user_id, "response": "Command Prompt ready."}
         
     # 2. General LLM Fallback
