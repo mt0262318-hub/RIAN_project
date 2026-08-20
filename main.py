@@ -1,7 +1,3 @@
-from services.workspace.workspace_router import workspace_router
-from services.vision.screen_router import screen_router
-from services.proactive.heartbeat_daemon import proactive_router
-from services.voice_stream.stream_router import stream_router
 from services.ingress_router import ingress_bp
 from tools.vault_tool_schema import VAULT_TOOLS, handle_vault_call
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -226,16 +222,7 @@ class RIANAssistant:
                 {"recursion_limit": 8}
             )
             response = result["messages"][-1].content
-            
-    # Strip LLM thinking tokens
-    import re
-    if isinstance(response, str):
-        response = re.sub(r"<think>.*?</think>", "", response, flags=re.DOTALL).strip()
-    elif isinstance(response, dict) and "response" in response:
-        if isinstance(response["response"], str):
-            response["response"] = re.sub(r"<think>.*?</think>", "", response["response"], flags=re.DOTALL).strip()
-
-    return response
+            return response
 
         except Exception as e:
             logger.error(f"Error processing agent query: {e}", exc_info=True)
@@ -259,10 +246,6 @@ class RIANAssistant:
 assistant_instance = RIANAssistant()
 app = FastAPI(title="J.I.V.A. / R.I.A.N. Autonomous AI Master")
 app.include_router(ingress_bp)
-app.include_router(workspace_router)
-app.include_router(screen_router)
-app.include_router(proactive_router)
-app.include_router(stream_router)
 
 
 class ConnectionManager:
