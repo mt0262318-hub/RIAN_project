@@ -166,11 +166,12 @@ class RIANAssistant:
     async def retrieve_relevant_memory(self, query: str) -> str:
         """Fetch memory embeddings and semantic context"""
 if vector_db:
-                matches = await asyncio.to_thread(vector_db.search, query, top_k=2)
-                if matches:
-                    return " | ".join([m.get("text", "") for m in matches])
+    try:
+        matches = await asyncio.to_thread(vector_db.search, query, top_k=2)
+        if matches:
+            return " | ".join([m.get("text", "") for m in matches])
     except Exception as e:
-            logger.warning(f"Vector search bypassed: {e}")
+        logger.warning(f"Vector search bypassed: {e}")
         return "Context: Active Session Online"
 
     async def process_query(self, query: str, user_id: str = "default_user") -> str:
