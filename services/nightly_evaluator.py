@@ -67,7 +67,7 @@ def run_nightly_reflection():
 
     # Vault Integration: upload & local purge
     try:
-        from vault_storage import upload_to_telegram_vault
+        from tools.vault_storage import upload_to_telegram_vault
         upload_to_telegram_vault(dataset_filename, category="training_dataset")
         if os.path.exists(dataset_filename):
             os.remove(dataset_filename)
