@@ -673,7 +673,7 @@ async def serve_master_ui():
             </div>
         </div>
         <div class="hud-glass desktop-bottom-bar">
-            <div class="status-headline" id="desktopStatus">CLICK ANYWHERE TO ENGAGE NEURAL CORE</div>
+            <div class="status-headline" id="desktopStatus">NEURAL LINK ACTIVE (AUTONOMOUS STREAM)</div>
             <div class="input-row">
                 <input type="text" id="desktopInput" class="hud-input" placeholder="Type or speak continuous command..." onkeypress="handleEnter(event, 'desktopInput')" />
                 <button class="hud-btn" onclick="sendPrompt(document.getElementById('desktopInput').value, 'desktopInput')">Send</button>
