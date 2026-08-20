@@ -65,7 +65,28 @@ async def generate_rian_response(user_id: str, user_query: str, llm_instance) ->
     if len(history) > 20:
         conversation_history[user_id] = history[-10:]
 
-    return reply_text
+    
+        # Strip reasoning tokens / thought process completely
+        import re
+        reply = re.sub(r"<think>.*?</think>", "", reply, flags=re.DOTALL).strip()
+        if "Here's a thinking process" in reply:
+            parts = re.split(r"\n\n+", reply)
+            reply = parts[-1] if len(parts) > 1 else "Processing your request."
+
+        # Hardwire immediate execution for common system commands
+        p_low = prompt.lower()
+        if "youtube" in p_low and ("play" in p_low or "song" in p_low or "search" in p_low):
+            query_term = p_low.replace("open youtube", "").replace("play song", "").replace("play", "").replace("search", "").strip()
+            if pc_bridge.connected_pc:
+                asyncio.create_task(pc_bridge.send_command("play_youtube", {"query": query_term}))
+            reply = f"Playing {query_term} on YouTube."
+        elif "open " in p_low:
+            app_target = p_low.replace("open ", "").strip()
+            if pc_bridge.connected_pc:
+                asyncio.create_task(pc_bridge.send_command("open_app", {"app_name": app_target}))
+            reply = f"Opening {app_target} on your system."
+
+        return reply_text
 
 # ==========================================
 # SYSTEM SETTINGS & LOGGING CONFIGURATION
