@@ -1,163 +1,4 @@
-
-async def process_and_dispatch_action(text: str):
-    q = (text or "").lower().strip()
-    if "notepad" in q:
-        await safe_bridge_send({"action": "open_app", "target": "notepad"})
-        return "Notepad khol diya hai."
-    elif "youtube" in q:
-        await safe_bridge_send({"action": "open_url", "target": "https://youtube.com"})
-        return "YouTube open ho gaya."
-    elif "edge" in q or "browser" in q:
-        await safe_bridge_send({"action": "open_app", "target": "msedge"})
-        return "Microsoft Edge launch kar diya hai."
-    elif "cmd" in q or "terminal" in q:
-        await safe_bridge_send({"action": "open_app", "target": "cmd"})
-        return "Command Prompt ready hai."
-    return None
-
-def clean_dashboard_text(text: str) -> str:
-    if not isinstance(text, str): return str(text)
-    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-    text = re.sub(r"Here's a thinking process:.*", "", text, flags=re.DOTALL)
-    text = re.sub(r"\[USER\].*", "", text, flags=re.DOTALL)
-    text = re.sub(r"Output Generation:.*", "", text, flags=re.DOTALL)
-    text = re.sub(r"\*\*Final Output.*", "", text, flags=re.DOTALL)
-    return text.strip()
-
-
-def strip_all_thinking(text: str) -> str:
-    if not isinstance(text, str): return str(text)
-    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-    text = re.sub(r"Here's a thinking process:.*?(?=\n\n|[A-Z][a-z]+:|$)", "", text, flags=re.DOTALL)
-    text = re.sub(r"\*\*[0-9]\..*?\*\*", "", text)
-    return text.strip()
-
-
-async def process_user_query_globally(query_text: str):
-    q = (query_text or "").lower().strip()
-    # Trigger Local PC Bridge
-    if "notepad" in q:
-        await safe_bridge_send({"action": "open_app", "target": "notepad"})
-        return "Done. Notepad is opening now."
-    elif "youtube" in q:
-        await safe_bridge_send({"action": "open_url", "target": "https://youtube.com"})
-        return "Opening YouTube."
-    elif "edge" in q or "browser" in q:
-        await safe_bridge_send({"action": "open_app", "target": "msedge"})
-        return "Launching Microsoft Edge."
-    elif "cmd" in q or "terminal" in q:
-        await safe_bridge_send({"action": "open_app", "target": "cmd"})
-        return "Terminal ready."
-    return None
-
-
-async def safe_bridge_send(payload: dict):
-    if not hasattr(manager, "active_connections"):
-        return
-    import json
-    msg = json.dumps(payload)
-    for conn in list(manager.active_connections):
-        try:
-            await conn.send_text(msg)
-        except Exception:
-            pass
-
-
-def clean_llm_text(text: str) -> str:
-    if not isinstance(text, str): return str(text)
-    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-    text = re.sub(r"\[USER\].*", "", text, flags=re.DOTALL)
-    text = re.sub(r"Output Generation:.*", "", text, flags=re.DOTALL)
-    text = re.sub(r"\*\*Final Output.*", "", text, flags=re.DOTALL)
-    return text.strip()
-
-
-async def trigger_pc_bridge(query_str: str):
-    q = (query_str or "").lower().strip()
-    if "notepad" in q:
-        await safe_bridge_send({"action": "open_app", "target": "notepad"})
-        return "Done. Notepad opening now."
-    elif "youtube" in q:
-        await safe_bridge_send({"action": "open_url", "target": "https://youtube.com"})
-        return "Done. Opening YouTube."
-    elif "edge" in q or "browser" in q:
-        await safe_bridge_send({"action": "open_app", "target": "msedge"})
-        return "Done. Microsoft Edge launch ho raha hai."
-    elif "cmd" in q or "terminal" in q:
-        await safe_bridge_send({"action": "open_app", "target": "cmd"})
-        return "Done. Terminal ready hai."
-    return None
-
-
-def clean_response(text: str) -> str:
-    if not isinstance(text, str): return str(text)
-    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-    text = re.sub(r"\[USER\].*", "", text, flags=re.DOTALL)
-    text = re.sub(r"Output Generation:.*", "", text, flags=re.DOTALL)
-    return text.strip()
-
-
-async def handle_direct_action(txt: str):
-    t = (txt or "").lower().strip()
-    if "notepad" in t:
-        await safe_bridge_send({"action": "open_app", "target": "notepad"})
-        return "Notepad khol raha hoon."
-    elif "youtube" in t:
-        await safe_bridge_send({"action": "open_url", "target": "https://youtube.com"})
-        return "YouTube open ho gaya."
-    elif "edge" in t or "browser" in t:
-        await safe_bridge_send({"action": "open_app", "target": "msedge"})
-        return "Microsoft Edge launch ho raha hai."
-    elif "cmd" in t or "terminal" in t:
-        await safe_bridge_send({"action": "open_app", "target": "cmd"})
-        return "Command Prompt ready hai."
-    return None
-
-
-async def execute_bridge_action(raw_text: str):
-    txt = (raw_text or "").lower()
-    if "notepad" in txt:
-        await safe_bridge_send({"action": "open_app", "target": "notepad"})
-        return "Opening Notepad for you."
-    elif "youtube" in txt:
-        await safe_bridge_send({"action": "open_url", "target": "https://youtube.com"})
-        return "Opening YouTube now."
-    elif "edge" in txt or "browser" in txt:
-        await safe_bridge_send({"action": "open_app", "target": "msedge"})
-        return "Opening Microsoft Edge."
-    elif "cmd" in txt or "terminal" in txt:
-        await safe_bridge_send({"action": "open_app", "target": "cmd"})
-        return "Launching Terminal."
-    return None
-
-
-def sanitize_rian_response(text: str) -> str:
-    if not isinstance(text, str):
-        return str(text)
-    # Remove thought blocks and prompt echo
-    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-    text = re.sub(r"(\*\*Draft.*|\*Draft.*|Output Generation:.*|\[USER\].*|\[RIAN\].*)", "", text, flags=re.DOTALL)
-    text = text.split("[USER]")[0].split("Output Generation:")[0]
-    return text.strip()
-
-
-SYSTEM_INSTRUCTION = """You are R.I.A.N., an elite AI assistant.
-Directives:
-1. Speak in natural, crisp Hinglish/English.
-2. NEVER output your internal thoughts, self-critique, drafts, or reasoning steps like 'Polish:', 'Matches perfectly', or '<think>'.
-3. Always respond directly in 1 short sentence confirming the action taken."""
-
-
-def clean_llm_output(text: str) -> str:
-    if not isinstance(text, str):
-        return str(text)
-    # Remove <think> blocks cleanly
-    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-    return text.strip()
-
-from services.ingress_router import ingress_bp
-from tools.vault_tool_schema import VAULT_TOOLS, handle_vault_call
-from langchain_core.messages import SystemMessage, HumanMessage
+cat << 'EOF' > main.py
 import os
 import sys
 import io
@@ -166,6 +7,7 @@ import json
 import base64
 import asyncio
 import logging
+import re
 from typing import List, Optional, Dict, Any
 
 from dotenv import load_dotenv
@@ -177,58 +19,98 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from groq import Groq
 import edge_tts
 
-import tools.pc_tools as pc_tools
-from core.persona_manager import persona_engine
-
 load_dotenv()
-
-# --- Request Cache & Execution Locks (Loop/Echo Preventer) ---
-processed_requests = {}
-session_locks = {}
-
-async def run_direct_vision(prompt_text: str) -> str:
-    return pc_tools.run_screen_vision(prompt_text)
-# --- CONVERSATION MEMORY & PERSISTENT PERSONA ---
-conversation_history: Dict[str, List[Any]] = {}
-
-RIAN_SYSTEM_PROMPT = """You are R.I.A.N. (Real-time Intelligent Adaptive Node), an elite, highly intelligent, and witty personal AI assistant.
-
-CORE RULES & IDENTITY:
-1. Self-Awareness: You HAVE active real-time Edge-TTS speech and full access to PC controls (mouse, keyboard, media, apps, and vision). NEVER say you cannot speak or lack desktop capabilities.
-2. Context Memory: Always maintain full context of recent conversation turns. Answer follow-up questions accurately without drifting off-topic.
-3. Desktop Operations: If the user asks to control the PC (skip songs, skip ads, type text, click, open apps), acknowledge cleanly and trigger the appropriate action.
-4. Tone & Style: Sharp, respectful, authentic, and direct. Communicate in natural, clear Hinglish/English."""
-
-def get_or_create_history(session_id: str) -> List[Any]:
-    if session_id not in conversation_history:
-        conversation_history[session_id] = []
-    return conversation_history[session_id]
-
-async def generate_rian_response(user_id: str, user_query: str, llm_instance) -> str:
-    history = get_or_create_history(user_id)
-
-    messages = [SystemMessage(content=RIAN_SYSTEM_PROMPT)]
-    messages.extend(history[-8:])
-    
-    current_user_msg = HumanMessage(content=user_query)
-    messages.append(current_user_msg)
-
-    response = await llm_instance.ainvoke(messages)
-    reply_text = response.content.strip()
-
-    history.append(current_user_msg)
-    history.append(HumanMessage(content=reply_text))
-
-    if len(history) > 20:
-        conversation_history[user_id] = history[-10:]
-
-    return reply_text
 
 # ==========================================
 # SYSTEM SETTINGS & LOGGING CONFIGURATION
 # ==========================================
 from config.settings import settings
 from config.logging_config import configure_logging, get_logger
+
+configure_logging()
+logger = get_logger("rian.master_core")
+
+# ==========================================
+# R.I.A.N. PHYSICAL PC BRIDGE MANAGER
+# ==========================================
+class PCBridgeManager:
+    def __init__(self):
+        self.connected_pc: Optional[WebSocket] = None
+        self.main_loop = None
+        self._resp_future = None
+
+    async def register(self, websocket: WebSocket):
+        self.connected_pc = websocket
+        self.main_loop = asyncio.get_running_loop()
+        logger.info("⚡ [PC BRIDGE] Windows Laptop Connected successfully!")
+        print("⚡ [PC BRIDGE] Windows Laptop Connected successfully!")
+
+    def disconnect(self):
+        self.connected_pc = None
+        logger.warning("⚠️ [PC BRIDGE] Laptop Disconnected.")
+        print("⚠️ [PC BRIDGE] Laptop Disconnected.")
+
+    async def execute_command(self, action: str, target: str = "", params: dict = None) -> dict:
+        if not self.connected_pc:
+            logger.warning("[PC BRIDGE] Execution failed: Laptop not connected.")
+            return {"status": "error", "message": "Laptop Bridge offline."}
+        try:
+            payload = {"action": action, "target": target}
+            if params:
+                payload["params"] = params
+            await self.connected_pc.send_text(json.dumps(payload))
+            return {"status": "success", "message": f"Executed {action} -> {target}"}
+        except Exception as e:
+            logger.error(f"[PC BRIDGE ERROR] {e}")
+            return {"status": "error", "message": str(e)}
+
+    async def handle_response(self, data_str: str):
+        try:
+            data = json.loads(data_str)
+            if self._resp_future and not self._resp_future.done():
+                self._resp_future.set_result(data)
+        except Exception as e:
+            logger.error(f"[BRIDGE PARSE ERROR] {e}")
+
+pc_bridge = PCBridgeManager()
+
+# Link with pc_tools
+import tools.pc_tools as pc_tools
+pc_tools.set_bridge_instance(pc_bridge)
+
+# ==========================================
+# MASTER OS INTENT & CLEANING ENGINE
+# ==========================================
+def clean_llm_response(text: str) -> str:
+    """Removes all thinking tags, thought chains, prompts and reasoning logs"""
+    if not isinstance(text, str):
+        return str(text)
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    text = re.sub(r"Here\'s a thinking process:.*?(?=\n\n|[A-Z][a-z]+:|$)", "", text, flags=re.DOTALL)
+    text = re.sub(r"(\*\*Draft.*|\*Draft.*|Output Generation:.*|\[USER\].*|\[RIAN\].*)", "", text, flags=re.DOTALL)
+    text = re.sub(r"\*\*Final Output:\*\*.*", "", text, flags=re.DOTALL)
+    return text.strip()
+
+async def resolve_and_dispatch_action(query: str) -> Optional[str]:
+    """Intercepts PC level tasks and directly dispatches them to Windows Bridge"""
+    q = (query or "").lower().strip()
+    
+    if "notepad" in q:
+        await pc_bridge.execute_command("open_app", target="notepad")
+        return "Notepad open kar diya hai."
+    elif "youtube" in q:
+        await pc_bridge.execute_command("open_url", target="https://youtube.com")
+        return "YouTube open ho gaya."
+    elif "edge" in q or "browser" in q or "chrome" in q:
+        await pc_bridge.execute_command("open_app", target="msedge")
+        return "Browser launch ho raha hai."
+    elif "cmd" in q or "terminal" in q:
+        await pc_bridge.execute_command("open_app", target="cmd")
+        return "Command Prompt start kar diya hai."
+    elif "calc" in q or "calculator" in q:
+        await pc_bridge.execute_command("open_app", target="calc")
+        return "Calculator open ho gaya."
+    return None
 
 # ==========================================
 # CORE SUBSYSTEMS & ORCHESTRATION ENGINES
@@ -240,54 +122,64 @@ from core.local_llm import local_llm
 from core.multi_agent import orchestrator
 from core.vector_db import vector_db
 from core.vision_engine import vision_engine
-
-# ==========================================
-# AGENTS, TOOLS & AUDIO SUBSYSTEMS
-# ==========================================
+from core.persona_manager import persona_engine
+from services.ingress_router import ingress_bp
+from tools.vault_tool_schema import VAULT_TOOLS, handle_vault_call
 from agents.background_monitor import ProactiveMonitor
 from agents.graph_builder import build_agent_graph
 from services.system_monitor import SystemMonitor
 from services.audio_service import AudioService
 from tools.base_tools import ALL_TOOLS, load_custom_tools
 
-configure_logging()
-logger = get_logger("rian.master_core")
+conversation_history: Dict[str, List[Any]] = {}
+processed_requests: Dict[str, float] = {}
 
+RIAN_SYSTEM_PROMPT = """You are R.I.A.N., an elite AI assistant.
+Rules:
+1. Speak in natural, crisp Hinglish/English.
+2. NEVER output your internal thoughts, drafts, or reasoning steps like '<think>' or 'Analyze User Input'.
+3. Always give direct, short responses confirming actions taken."""
+
+def get_or_create_history(session_id: str) -> List[Any]:
+    if session_id not in conversation_history:
+        conversation_history[session_id] = []
+    return conversation_history[session_id]
+
+async def generate_rian_response(user_id: str, user_query: str, llm_instance) -> str:
+    # 1. Check for Direct PC Action first
+    direct_action = await resolve_and_dispatch_action(user_query)
+    if direct_action:
+        return direct_action
+
+    # 2. Memory & Conversation Execution
+    history = get_or_create_history(user_id)
+    messages = [SystemMessage(content=RIAN_SYSTEM_PROMPT)]
+    messages.extend(history[-6:])
+    
+    current_user_msg = HumanMessage(content=user_query)
+    messages.append(current_user_msg)
+
+    response = await llm_instance.ainvoke(messages)
+    clean_reply = clean_llm_response(response.content)
+
+    history.append(current_user_msg)
+    history.append(HumanMessage(content=clean_reply))
+
+    if len(history) > 16:
+        conversation_history[user_id] = history[-8:]
+
+    return clean_reply
 
 # ==========================================
-# VOICE BIOMETRICS & SECURITY SUBSYSTEM
-# ==========================================
-class VoiceBiometricsEngine:
-    """Speaker Recognition & Voice-Locked Mode Spec (Levels 61-70)"""
-
-    def __init__(self):
-        self.enrolled_voiceprint: Optional[str] = "VOICEPRINT_MANISH_PRIMARY"
-        self.lock_mode_enabled: bool = True
-        self.confidence_threshold: float = 0.85
-
-    async def verify_speaker(self, audio_data: Optional[bytes] = None) -> Dict[str, Any]:
-        """Verify audio biometric matches enrolled owner print"""
-        if not self.lock_mode_enabled:
-            return {"authenticated": True, "confidence": 1.0, "speaker": "Owner"}
-        return {
-            "authenticated": True,
-            "confidence": 0.94,
-            "speaker": "Manish",
-            "status": "VOICE_LOCKED_ACTIVE"
-        }
-
-
-# ==========================================
-# MASTER AUTONOMOUS ASSISTANT CORE
+# MASTER ASSISTANT CLASS
 # ==========================================
 class RIANAssistant:
-    """Master Autonomous AI Engine for R.I.A.N. / J.I.V.A."""
-
     def __init__(self) -> None:
-        logger.info("Initializing R.I.A.N. Assistant Master Core (680-Line Complete Spec)...")
+        logger.info("Initializing R.I.A.N. Assistant Master Core...")
         self.llm = ChatGroq(
-            model_name=settings.groq_model,
-            api_key=settings.groq_api_key or "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",
+            model_name="qwen/qwen3.6-27b",
+            api_key=settings.groq_api_key or os.environ.get("GROQ_API_KEY", ""),
+            temperature=0.4
         )
         self.active_tools = ALL_TOOLS + [
             pc_tools.analyze_laptop_screen,
@@ -302,92 +194,10 @@ class RIANAssistant:
         ] + load_custom_tools()
         self.agent = build_agent_graph(self.llm, self.active_tools)
         self.monitor = SystemMonitor()
-        self.memory_cache: Dict[str, Any] = {}
         logger.info(f"Loaded {len(self.active_tools)} tools into Agent Execution Graph successfully.")
-
-    async def handle_alert(self, event: Event) -> None:
-        alert_type = event.payload.get("alert_type")
-        message = event.payload.get("message")
-        logger.warning(f"ALERT [{alert_type}]: {message}")
-        print(f"\n[SYSTEM ALERT] {message}")
-
-    async def retrieve_relevant_memory(self, query: str) -> str:
-        """Fetch memory embeddings and semantic context"""
-        try:
-            if vector_db:
-                matches = await asyncio.to_thread(vector_db.search, query, top_k=2)
-                if matches:
-                    return " | ".join([m.get("text", "") for m in matches])
-        except Exception as e:
-            logger.warning(f"Vector search bypassed: {e}")
-        return "Context: Active Session Online"
-
-    async def process_query(self, query: str, user_id: str = "default_user") -> str:
-        """Multi-Stage Intercept, Context Augment & LangGraph Execution"""
-        try:
-            session = await session_manager.get_or_create_session(user_id)
-            query_lower = query.lower().strip()
-
-           # Fast Context Interceptions: Persona Switch
-            detected_persona = persona_engine.detect_persona_switch(query)
-            if detected_persona:
-                active_profile = persona_engine.set_persona(user_id, detected_persona)
-                if detected_persona == "caring_companion":
-                    return "Arey bilkul! Ab se main tumhari caring companion ban kar baat karungi. Batao, kaisa raha aaj ka din? ❤️"
-                elif detected_persona == "companion_friend":
-                    return "Haan bhai! Ab se dost mode active hai. Bata kya chal raha hai?"
-                elif detected_persona == "finance_advisor":
-                    return "Understood. Wealth Strategist persona active. Share your financial query."
-                elif detected_persona == "tech_lead":
-                    return "Principal Architect mode active. Let's review the code and architecture."
-                else:
-                    return "Default R.I.A.N. Core mode restored."
-            # Fast Context Interceptions: Name registration
-            if "mera naam" in query_lower and ("hai" in query_lower or "rakh" in query_lower):
-                words = query_lower.split()
-                try:
-                    idx = words.index("naam")
-                    name = words[idx + 1].replace("hai", "").replace("rakho", "").strip(".,!?")
-                    session.context["Name"] = name
-                    return f"Theek hai, maine yaad rakh liya hai ki aapka naam {name} hai."
-                except Exception:
-                    pass
-
-            # Fast Context Interceptions: Name retrieval
-            if any(x in query_lower for x in ["mera naam kya", "what is my name", "who am i"]):
-                name = session.context.get("Name")
-                if name:
-                    return f"Aapka naam {name} hai."
-                return "Mujhe abhi aapka naam nahi pata. Kripya apna naam batayein."
-
-            # Code Sandbox Intent Interception
-            if query_lower.startswith("run code:") or query_lower.startswith("exec:"):
-                raw_code = query.split(":", 1)[1].strip()
-                sandbox_result = await asyncio.to_thread(sandbox.execute, raw_code)
-                return f"[Sandbox Execution Result]:\n{sandbox_result}"
-
-            # Memory Retrieval & Session Context Augmented Prompt
-            retrieved_memory = await self.retrieve_relevant_memory(query)
-            user_name = session.context.get("Name", "Unknown")
-            profile_text = f"User ID: {user_id}, Name: {user_name}, Memory: {retrieved_memory}"
-            enhanced_query = f"[System Context -> {profile_text}]\nUser Query: {query}"
-
-            # Async LangGraph Multi-Tool Execution
-            result = await asyncio.to_thread(
-                self.agent.invoke,
-                {"messages": [HumanMessage(content=enhanced_query)]},
-                {"recursion_limit": 8}
-            )
-            response = result["messages"][-1].content
-            return response
-
-        except Exception as e:
-            logger.error(f"Error processing agent query: {e}", exc_info=True)
-            return f"Processing me problem aayi: {str(e)}"
 
     async def start(self) -> None:
         await event_bus.start()
-        event_bus.subscribe(EventType.ALERT, self.handle_alert)
         await self.monitor.start()
         logger.info("R.I.A.N. Core & Subsystems are ONLINE.")
 
@@ -396,18 +206,15 @@ class RIANAssistant:
         await event_bus.stop()
         logger.info("R.I.A.N. Systems safely shutdown.")
 
+assistant_instance = RIANAssistant()
 
 # ==========================================
-# FASTAPI APPLICATION & CONNECTION MANAGER
+# FASTAPI APPLICATION & UI CONNECTION MANAGER
 # ==========================================
-assistant_instance = RIANAssistant()
 app = FastAPI(title="J.I.V.A. / R.I.A.N. Autonomous AI Master")
 app.include_router(ingress_bp)
 
-
-class ConnectionManager:
-    """Manages active WebSockets and telemetry streams"""
-
+class UIConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
 
@@ -419,151 +226,85 @@ class ConnectionManager:
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
 
-    async def broadcast_state(self, message: Dict[str, Any]):
-        for connection in self.active_connections:
+    async def broadcast_json(self, message: Dict[str, Any]):
+        for conn in list(self.active_connections):
             try:
-                await connection.send_json(message)
+                await conn.send_json(message)
             except Exception:
                 pass
 
-
-manager = ConnectionManager()
-
+ui_manager = UIConnectionManager()
 
 @app.on_event("startup")
 async def startup_event():
     await assistant_instance.start()
 
-
 @app.on_event("shutdown")
 async def shutdown_event():
     await assistant_instance.stop()
 
-
 # ==========================================
-# PYDANTIC SCHEMAS & API ENDPOINTS
+# WEBSOCKET CHANNELS (PC BRIDGE + TELEMETRY)
 # ==========================================
-class ChatRequest(BaseModel):
-    query: str
-    user_id: str = Field(default="default_user", description="Unique user session identifier")
-
-
-class BiometricsRequest(BaseModel):
-    user_id: str
-    passcode: Optional[str] = None
-
-
-
-@app.post("/api/chat")
-async def chat_api_clean(request: Request):
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    
-    query = body.get("query") or body.get("message") or ""
-    user_id = body.get("session_id") or body.get("user_id") or "user"
-    q_low = str(query).lower().strip()
-    
-    # 1. OS Direct Bridge Triggers
-    if "notepad" in q_low:
-        await safe_bridge_send({"action": "open_app", "target": "notepad"})
-        return {"status": "success", "user_id": user_id, "response": "Done. Notepad is opening now."}
-    elif "youtube" in q_low:
-        await safe_bridge_send({"action": "open_url", "target": "https://youtube.com"})
-        return {"status": "success", "user_id": user_id, "response": "Opening YouTube."}
-    elif "edge" in q_low or "browser" in q_low:
-        await safe_bridge_send({"action": "open_app", "target": "msedge"})
-        return {"status": "success", "user_id": user_id, "response": "Launching Microsoft Edge."}
-    elif "cmd" in q_low or "terminal" in q_low:
-        await safe_bridge_send({"action": "open_app", "target": "cmd"})
-        return {"status": "success", "user_id": user_id, "response": "Command Prompt ready."}
-        
-    # 2. General LLM Fallback
-    raw_out = local_llm.generate(query)
-    import re
-    clean_out = re.sub(r"<think>.*?</think>", "", str(raw_out), flags=re.DOTALL).strip()
-    return {"status": "success", "user_id": user_id, "response": clean_out}
-
-
-@app.post("/api/biometrics/verify")
-async def verify_biometrics(request: BiometricsRequest):
-    auth = await assistant_instance.biometrics.verify_speaker()
-    return {"status": "success", "auth": auth}
-
-
-@app.get("/api/system/status")
-async def get_system_status():
-    return {
-        "status": "ONLINE",
-        "neural_link": "ESTABLISHED",
-        "voice_biometrics": "LOCKED_OWNER",
-        "active_tools_count": len(assistant_instance.active_tools),
-        "timestamp": time.time()
-    }
-
-
-# ==========================================
-# WEBSOCKET REALTIME TELEMETRY STREAM
-# ==========================================
-@app.websocket("/ws/telemetry")
-async def websocket_telemetry(websocket: WebSocket):
-    await manager.connect(websocket)
+@app.websocket("/ws/pc-bridge")
+async def pc_bridge_route(websocket: WebSocket):
+    await websocket.accept()
+    await pc_bridge.register(websocket)
     try:
         while True:
             data = await websocket.receive_text()
+            await pc_bridge.handle_response(data)
+    except WebSocketDisconnect:
+        pc_bridge.disconnect()
+    except Exception:
+        pc_bridge.disconnect()
 
-            # Direct Screen Vision Intercept
-            _user_raw = str(user_text if 'user_text' in locals() else (user_input if 'user_input' in locals() else (data.get("message", "") if isinstance(locals().get("data"), dict) else "")))
-            if any(k in _user_raw.lower() for k in ["screen", "dekh", "dekho", "kya khula", "kya chal raha"]):
-                import tools.pc_tools as pc_tools
-                print(f"[VISION EXECUTING] Capturing screen for: {_user_raw}")
-                vision_out = pc_tools.run_screen_vision(_user_raw)
-                try:
-                    await websocket.send_json({"type": "response", "message": vision_out, "status": "completed"})
-                except Exception:
-                    pass
-                continue
-            payload = json.loads(data)
-            query = payload.get("query", payload.get("text", "")).strip()
+@app.websocket("/ws/telemetry")
+async def websocket_telemetry(websocket: WebSocket):
+    await ui_manager.connect(websocket)
+    try:
+        while True:
+            data_str = await websocket.receive_text()
+            try:
+                payload = json.loads(data_str)
+            except Exception:
+                payload = {"query": data_str}
+
+            query = payload.get("query", payload.get("text", payload.get("message", ""))).strip()
             user_id = payload.get("user_id", "web_user_01")
 
             if not query:
                 continue
 
-            # --- DEDUPLICATION SHIELD (Loop & Echo Preventer) ---
-            req_id = payload.get("request_id")
+            # Deduplication Check
+            req_id = payload.get("request_id", query)
             now = time.time()
             for r_id, t_stamp in list(processed_requests.items()):
-                if now - t_stamp > 10.0:
+                if now - t_stamp > 6.0:
                     processed_requests.pop(r_id, None)
 
-            if req_id and req_id in processed_requests:
+            if req_id in processed_requests:
+                continue
+            processed_requests[req_id] = now
+
+            # 1. Update UI Logs
+            await websocket.send_json({"type": "log", "log": f"Voice/Text Input: {query}"})
+            await websocket.send_json({"type": "state", "agent_status": "PROCESSING", "state_text": "Processing neural command..."})
+
+            # 2. Direct Screen Vision Intercept
+            if any(k in query.lower() for k in ["screen", "dekh", "dekho", "kya khula"]):
+                vision_out = pc_tools.run_screen_vision(query)
+                await websocket.send_json({"type": "response", "reply": vision_out, "text": vision_out})
                 continue
 
-            if req_id:
-                processed_requests[req_id] = now
-
-            # Step 1: Echo User Input to HUD Log
-            await websocket.send_json({"type": "log", "log": f"Voice/Text Input: {query}"})
-            await websocket.send_json({
-                "type": "state",
-                "agent_status": "PROCESSING",
-                "state_text": "Processing neural command...",
-            })
-
-            # Step 2: Autonomous Context-Aware Execution with Memory
-            if 'chat_groq' not in locals() and 'chat_groq' not in globals():
-                from langchain_groq import ChatGroq
-                chat_groq = ChatGroq(model_name="qwen/qwen3.6-27b", temperature=0.5)
-
+            # 3. Resolve Execution & Return Clean Answer
             response_text = await generate_rian_response(
                 user_id=user_id,
                 user_query=query,
-                llm_instance=chat_groq
+                llm_instance=assistant_instance.llm
             )
 
-            # Step 3: Broadcast Response and Set Active Listener State
+            # 4. Broadcast Output
             await websocket.send_json({
                 "type": "response",
                 "reply": response_text,
@@ -572,22 +313,70 @@ async def websocket_telemetry(websocket: WebSocket):
             await websocket.send_json({
                 "type": "state",
                 "agent_status": "ACTIVE",
-                "state_text": "LISTENING... (Continuous Stream Active)",
+                "state_text": "LISTENING... (Continuous Stream Active)"
             })
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        ui_manager.disconnect(websocket)
     except Exception as e:
-        logger.error(f"WebSocket Error: {e}")
-        manager.disconnect(websocket)
+        logger.error(f"Telemetry WS Error: {e}")
+        ui_manager.disconnect(websocket)
 
+# ==========================================
+# REST API ENDPOINTS
+# ==========================================
+@app.post("/api/chat")
+async def chat_api(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    query = body.get("query") or body.get("message") or ""
+    user_id = body.get("session_id") or body.get("user_id") or "user"
+    
+    response = await generate_rian_response(user_id, query, assistant_instance.llm)
+    return {"status": "success", "user_id": user_id, "response": response}
+
+groq_voice_client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
+
+@app.post("/api/voice-query")
+async def voice_query_handler(file: UploadFile = File(...)):
+    try:
+        audio_bytes = await file.read()
+        transcription = groq_voice_client.audio.transcriptions.create(
+            file=("audio.webm", audio_bytes),
+            model="whisper-large-v3",
+            prompt="Manish, RIAN, Hinglish, Notepad, YouTube, type, open, shortcuts, system commands",
+            response_format="json",
+        )
+        user_text = transcription.text.strip()
+        if not user_text:
+            return {"user_text": "", "response_text": "I didn't catch that."}
+
+        response_text = await generate_rian_response("voice_user", user_text, assistant_instance.llm)
+
+        communicate = edge_tts.Communicate(response_text, "en-US-ChristopherNeural")
+        audio_stream = io.BytesIO()
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_stream.write(chunk["data"])
+        audio_stream.seek(0)
+        audio_b64 = base64.b64encode(audio_stream.getvalue()).decode("utf-8")
+
+        return {
+            "user_text": user_text,
+            "response_text": response_text,
+            "audio_b64": audio_b64,
+        }
+    except Exception as e:
+        logger.error(f"Voice Pipeline Error: {e}")
+        return {"user_text": "", "response_text": f"Error: {str(e)}"}
 
 @app.get("/")
 def home():
-    return {"message": "R.I.A.N. AI Assistant is running successfully!"}
-
+    return {"status": "ONLINE", "system": "R.I.A.N. Autonomous Core"}
 
 # ==========================================
-# 3D CYBERPUNK NEURAL INTERFACE (EMBEDDED)
+# 3D CYBERPUNK NEURAL INTERFACE (EMBEDDED UI)
 # ==========================================
 @app.get("/ui", response_class=HTMLResponse)
 async def serve_master_ui():
@@ -602,7 +391,6 @@ async def serve_master_ui():
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; user-select: none; }
         body { background: #000308; color: #00e5ff; overflow: hidden; height: 100vh; width: 100vw; position: relative; }
         #canvas3d { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-
         .hud-glass {
             background: rgba(3, 15, 29, 0.75);
             border: 1px solid rgba(0, 229, 255, 0.45);
@@ -625,40 +413,25 @@ async def serve_master_ui():
             z-index: 10;
             letter-spacing: 1px;
         }
-
         .desktop-status { top: 25px; left: 30px; width: 280px; padding: 18px; }
         .desktop-status h3 { font-size: 16px; letter-spacing: 3px; margin-bottom: 8px; text-shadow: 0 0 10px #00e5ff; }
         .desktop-status p { font-size: 11px; line-height: 1.7; color: #9feeff; }
-
-        .desktop-logs { top: 40px; right: 30px; width: 340px; padding: 18px; }
+        .desktop-logs { top: 40px; right: 30px; width: 360px; padding: 18px; }
         .desktop-logs h4 { font-size: 14px; letter-spacing: 2px; margin-bottom: 8px; }
         .log-stream { font-size: 11px; color: #7ce8ff; max-height: 160px; overflow-y: auto; line-height: 1.6; }
         .log-stream::-webkit-scrollbar { width: 4px; }
         .log-stream::-webkit-scrollbar-thumb { background: #00e5ff; border-radius: 2px; }
-
-        .dt-node-1 { top: 40px; right: 390px; }
-        .dt-node-2 { top: 120px; right: 380px; }
+        .dt-node-1 { top: 40px; right: 410px; }
+        .dt-node-2 { top: 120px; right: 400px; }
         .dt-node-3 { bottom: 180px; left: 40px; }
         .dt-node-4 { bottom: 110px; left: 60px; }
         .dt-node-5 { bottom: 130px; right: 90px; }
         .dt-node-6 { bottom: 65px; right: 110px; }
-
         .desktop-bottom-bar {
             bottom: 25px; left: 50%; transform: translateX(-50%);
             width: 640px; padding: 14px 22px; text-align: center;
             z-index: 20;
         }
-
-        .mobile-layout {
-            display: none;
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            flex-direction: column; justify-content: space-between;
-            align-items: center; padding: 45px 20px 25px; z-index: 10;
-        }
-        .mobile-header-text { font-size: 13px; letter-spacing: 3px; font-weight: bold; color: #00e5ff; text-shadow: 0 0 12px #00e5ff; text-align: center; }
-        .mobile-footer { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 15px; }
-        .mobile-speak-label { font-size: 14px; letter-spacing: 4px; color: #00e5ff; text-shadow: 0 0 12px #00e5ff; font-weight: bold; }
-
         .status-headline { font-size: 12px; font-weight: bold; letter-spacing: 3px; margin-bottom: 10px; text-shadow: 0 0 10px #00e5ff; }
         .input-row { display: flex; gap: 10px; width: 100%; }
         .hud-input {
@@ -672,17 +445,10 @@ async def serve_master_ui():
             transition: 0.2s;
         }
         .hud-btn:hover { background: #00e5ff; color: #000; box-shadow: 0 0 15px #00e5ff; }
-
-        @media (max-width: 1023px) {
-            .desktop-layout { display: none !important; }
-            .mobile-layout { display: flex !important; }
-        }
     </style>
 </head>
 <body onclick="engageContinuousVoice()">
     <canvas id="canvas3d"></canvas>
-
-    <!-- LAPTOP / DESKTOP HUD -->
     <div class="desktop-layout">
         <div class="hud-glass desktop-status">
             <h3>SYSTEM R.I.A.N.</h3>
@@ -690,14 +456,12 @@ async def serve_master_ui():
             <p>NEURAL LINK: ESTABLISHED</p>
             <p>VOICE LOCK: <span style="color:#00ffaa;">ACTIVE (OWNER)</span></p>
         </div>
-
         <div class="memory-badge dt-node-1">[MEMORY] User_Prefs</div>
         <div class="memory-badge dt-node-2">[CONTEXT] project_Pure_Bal</div>
         <div class="memory-badge dt-node-3">[CONTEXT] Gaura_Purey_Badal</div>
         <div class="memory-badge dt-node-4">[CONTEXT] Active_Session</div>
         <div class="memory-badge dt-node-5">[FILES] project_R.I.A.N_V2.0</div>
         <div class="memory-badge dt-node-6">[MEMORY] Retiles</div>
-
         <div class="hud-glass desktop-logs">
             <h4>Execution Dashboard</h4>
             <p style="font-size: 10px; color: #9feeff; margin-bottom: 6px;">SYSTEM MONITOR (ACTIVE)</p>
@@ -707,7 +471,6 @@ async def serve_master_ui():
                 <div>[SECURITY] Voice Biometrics Active.</div>
             </div>
         </div>
-
         <div class="hud-glass desktop-bottom-bar">
             <div class="status-headline" id="desktopStatus">CLICK ANYWHERE TO ENGAGE NEURAL CORE</div>
             <div class="input-row">
@@ -716,34 +479,15 @@ async def serve_master_ui():
             </div>
         </div>
     </div>
-
-    <!-- MOBILE ZERO-UI -->
-    <div class="mobile-layout">
-        <div class="mobile-header-text">RIAN (GAURA PUREY BADAL)</div>
-        <div class="mobile-footer">
-            <div class="mobile-speak-label" id="mobileStatus">SPEAK NOW</div>
-            <div class="hud-glass" style="width: 100%; padding: 12px;">
-                <div class="input-row">
-                    <input type="text" id="mobileInput" class="hud-input" placeholder="Speak command..." onkeypress="handleEnter(event, 'mobileInput')" />
-                    <button class="hud-btn" onclick="sendPrompt(document.getElementById('mobileInput').value, 'mobileInput')">Send</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script>
-        const isMobile = window.innerWidth < 1024;
         let ws, recognition, voiceStarted = false;
-
         function connectSocket() {
             const loc = window.location;
             const wsProtocol = loc.protocol === "https:" ? "wss://" : "ws://";
             ws = new WebSocket(wsProtocol + loc.host + "/ws/telemetry");
-
             ws.onmessage = function(e) {
                 const packet = JSON.parse(e.data);
                 const logBox = document.getElementById("desktopLogStream");
-
                 if (packet.type === "log" && logBox) {
                     logBox.innerHTML += `<div>[USER] ${packet.log}</div>`;
                     logBox.scrollTop = logBox.scrollHeight;
@@ -757,77 +501,43 @@ async def serve_master_ui():
                 }
                 if (packet.type === "state") {
                     if (document.getElementById("desktopStatus")) document.getElementById("desktopStatus").innerText = packet.state_text;
-                    if (document.getElementById("mobileStatus")) document.getElementById("mobileStatus").innerText = packet.state_text;
                 }
             };
             ws.onclose = () => setTimeout(connectSocket, 2000);
         }
 
-        // 3D Three.js Hologram Scene
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas3d'), alpha: true, antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
 
-        let coreMesh, ring1, ring2;
-
-        if (!isMobile) {
-            const pCount = 3800;
-            const pGeo = new THREE.BufferGeometry();
-            const pPos = new Float32Array(pCount * 3);
-            for (let i = 0; i < pCount * 3; i += 3) {
-                const u = Math.random(), v = Math.random();
-                const theta = u * 2.0 * Math.PI, phi = Math.acos(2.0 * v - 1.0);
-                const r = 2.2 + (Math.random() * 0.2);
-                pPos[i] = r * Math.sin(phi) * Math.cos(theta);
-                pPos[i+1] = r * Math.sin(phi) * Math.sin(theta);
-                pPos[i+2] = r * Math.cos(phi);
-            }
-            pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
-            const pMat = new THREE.PointsMaterial({ color: 0x00e5ff, size: 0.038, transparent: true, opacity: 0.85 });
-            coreMesh = new THREE.Points(pGeo, pMat);
-            scene.add(coreMesh);
-
-            const ringGeo1 = new THREE.RingGeometry(3.0, 3.12, 64);
-            const ringMat1 = new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
-            ring1 = new THREE.Mesh(ringGeo1, ringMat1);
-            ring1.rotation.x = Math.PI / 2.3;
-            scene.add(ring1);
-
-            const ringGeo2 = new THREE.RingGeometry(3.2, 3.25, 64);
-            const ringMat2 = new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
-            ring2 = new THREE.Mesh(ringGeo2, ringMat2);
-            ring2.rotation.x = Math.PI / 2.1;
-            ring2.rotation.y = Math.PI / 12;
-            scene.add(ring2);
-
-            camera.position.z = 6.2;
-        } else {
-            const pCount = 2000;
-            const pGeo = new THREE.BufferGeometry();
-            const pPos = new Float32Array(pCount * 3);
-            for (let i = 0; i < pCount * 3; i += 3) {
-                const u = Math.random(), v = Math.random();
-                const theta = u * 2.0 * Math.PI, phi = Math.acos(2.0 * v - 1.0);
-                const r = 1.8 + (Math.sin(theta * 3) * 0.2);
-                pPos[i] = r * Math.sin(phi) * Math.cos(theta);
-                pPos[i+1] = r * Math.sin(phi) * Math.sin(theta);
-                pPos[i+2] = r * Math.cos(phi);
-            }
-            pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
-            const pMat = new THREE.PointsMaterial({ color: 0x00e5ff, size: 0.045, transparent: true, opacity: 0.9 });
-            coreMesh = new THREE.Points(pGeo, pMat);
-            scene.add(coreMesh);
-
-            camera.position.z = 5.0;
+        const pCount = 3800;
+        const pGeo = new THREE.BufferGeometry();
+        const pPos = new Float32Array(pCount * 3);
+        for (let i = 0; i < pCount * 3; i += 3) {
+            const u = Math.random(), v = Math.random();
+            const theta = u * 2.0 * Math.PI, phi = Math.acos(2.0 * v - 1.0);
+            const r = 2.2 + (Math.random() * 0.2);
+            pPos[i] = r * Math.sin(phi) * Math.cos(theta);
+            pPos[i+1] = r * Math.sin(phi) * Math.sin(theta);
+            pPos[i+2] = r * Math.cos(phi);
         }
+        pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+        const coreMesh = new THREE.Points(pGeo, new THREE.PointsMaterial({ color: 0x00e5ff, size: 0.038, transparent: true, opacity: 0.85 }));
+        scene.add(coreMesh);
+
+        const ring1 = new THREE.Mesh(new THREE.RingGeometry(3.0, 3.12, 64), new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide, transparent: true, opacity: 0.7 }));
+        ring1.rotation.x = Math.PI / 2.3;
+        scene.add(ring1);
+
+        const ring2 = new THREE.Mesh(new THREE.RingGeometry(3.2, 3.25, 64), new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide, transparent: true, opacity: 0.4 }));
+        ring2.rotation.x = Math.PI / 2.1;
+        scene.add(ring2);
+        camera.position.z = 6.2;
 
         function animate() {
             requestAnimationFrame(animate);
-            if (coreMesh) {
-                coreMesh.rotation.y += 0.003;
-                coreMesh.rotation.x += 0.001;
-            }
+            if (coreMesh) { coreMesh.rotation.y += 0.003; coreMesh.rotation.x += 0.001; }
             if (ring1) ring1.rotation.z += 0.0035;
             if (ring2) ring2.rotation.z -= 0.002;
             renderer.render(scene, camera);
@@ -840,11 +550,10 @@ async def serve_master_ui():
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Speech Synthesis Engine
         function engageContinuousVoice() {
             if (voiceStarted) return;
             voiceStarted = true;
-            vocalizeOutput("Systems fully online, Manish. Listening continuously for commands.");
+            vocalizeOutput("Systems online Manish. Ready for commands.");
             startVoiceLoop();
         }
 
@@ -852,7 +561,7 @@ async def serve_master_ui():
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 window.speechSynthesis.resume();
-                let clean = text.replace(/\\[.*?\\]/g, '').replace(/[*#_`]/g, '').trim();
+                let clean = text.replace(/\[.*?\]/g, '').replace(/[*#_`]/g, '').trim();
                 const utt = new SpeechSynthesisUtterance(clean);
                 utt.rate = 1.0;
                 utt.pitch = 1.0;
@@ -867,42 +576,30 @@ async def serve_master_ui():
         function startVoiceLoop() {
             const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechAPI) return;
-
             recognition = new SpeechAPI();
             recognition.continuous = true;
             recognition.interimResults = true;
             recognition.lang = 'en-US';
-
             recognition.onresult = function(evt) {
                 let speechText = '';
                 for (let i = evt.resultIndex; i < evt.results.length; ++i) {
                     speechText += evt.results[i][0].transcript;
                 }
-                const activeInput = isMobile ? document.getElementById('mobileInput') : document.getElementById('desktopInput');
+                const activeInput = document.getElementById('desktopInput');
                 if (activeInput) activeInput.value = speechText;
-
                 if (evt.results[evt.results.length - 1].isFinal) {
-                    sendPrompt(speechText, isMobile ? 'mobileInput' : 'desktopInput');
+                    sendPrompt(speechText, 'desktopInput');
                 }
             };
-
-            recognition.onerror = function() {
-                setTimeout(() => { try { recognition.start(); } catch(e){} }, 800);
-            };
-
-            recognition.onend = function() {
-                try { recognition.start(); } catch(e){}
-            };
-
+            recognition.onerror = () => setTimeout(() => { try { recognition.start(); } catch(e){} }, 800);
+            recognition.onend = () => { try { recognition.start(); } catch(e){} };
             try { recognition.start(); } catch(e){}
             if (document.getElementById("desktopStatus")) document.getElementById("desktopStatus").innerText = "LISTENING... (Continuous Stream Active)";
-            if (document.getElementById("mobileStatus")) document.getElementById("mobileStatus").innerText = "LISTENING...";
         }
 
         function handleEnter(e, inputId) {
             if (e.key === 'Enter') {
-                const val = document.getElementById(inputId).value;
-                sendPrompt(val, inputId);
+                sendPrompt(document.getElementById(inputId).value, inputId);
             }
         }
 
@@ -915,210 +612,17 @@ async def serve_master_ui():
                 document.getElementById(inputId).value = "";
             }
         }
-
-        window.onload = function() {
-            connectSocket();
-        };
+        window.onload = function() { connectSocket(); };
     </script>
 </body>
 </html>"""
     return HTMLResponse(content=html_content)
 
-
 # ==========================================
-# CLI DUAL-INTERACTIVE SYSTEM
-# ==========================================
-async def terminal_main() -> None:
-    audio = AudioService()
-    proactive_brain = None
-
-    try:
-        await assistant_instance.start()
-        print("\n==============================")
-        print("    R.I.A.N. MASTER ONLINE    ")
-        print("==============================")
-
-        proactive_brain = ProactiveMonitor(
-            llm=assistant_instance.llm, api_key=settings.groq_api_key
-        )
-        proactive_brain.start()
-
-        try:
-            await audio.speak("Hello sir, mai RIAN hoon. Mai aapki kya madad karne ke liye ready hu")
-        except Exception:
-            pass
-
-        while True:
-            try:
-                print("\n[1] Voice Command 🎤 | [2] Type Command ⌨️ | [3] Exit ❌")
-                mode = input("Select Mode (1/2/3): ").strip()
-
-                if mode == "3":
-                    break
-                elif mode == "1":
-                    query = await audio.listen()
-                    if not query:
-                        continue
-                    print(f"👤 You (Voice) >> {query}")
-                elif mode == "2":
-                    query = input("\n👤 You >> ").strip()
-                    if query.lower() in ["exit", "quit", "bye"]:
-                        break
-                    if not query:
-                        continue
-                else:
-                    print("Invalid option. Please choose 1, 2, or 3.")
-                    continue
-
-                response = await assistant_instance.process_query(query)
-                print(f"\n🤖 R.I.A.N. >> {response}")
-                try:
-                    await audio.speak(response)
-                except Exception:
-                    pass
-
-            except KeyboardInterrupt:
-                break
-    finally:
-        if proactive_brain:
-            proactive_brain.stop()
-        await assistant_instance.stop()
-
-
-# ==========================================
-# MAIN EXECUTION ROUTER
-# ==========================================
-
-# ---------------------------------------------------------
-# R.I.A.N. PHYSICAL PC BRIDGE MANAGER
-# ---------------------------------------------------------
-class PCBridgeManager:
-    def __init__(self):
-        self.connected_pc = None
-        self.main_loop = None
-        self._resp_future = None
-
-    async def register(self, websocket: WebSocket):
-        self.connected_pc = websocket
-        self.main_loop = asyncio.get_running_loop()
-        print("[BRIDGE ACCEPTED] Physical Laptop connected successfully!")
-
-    def disconnect(self):
-        self.connected_pc = None
-        print("[BRIDGE DISCONNECTED] Laptop disconnected.")
-
-    async def execute_command(self, action: str, params: dict) -> dict:
-        if not self.connected_pc:
-            return {"status": "error", "message": "Laptop Bridge connected nahi hai."}
-        try:
-            self._resp_future = asyncio.get_running_loop().create_future()
-            await self.connected_pc.send_text(json.dumps({"action": action, "params": params}))
-            res = await asyncio.wait_for(self._resp_future, timeout=25.0)
-            return res
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
-        finally:
-            self._resp_future = None
-
-    async def handle_response(self, data_str: str):
-        try:
-            data = json.loads(data_str)
-            if self._resp_future and not self._resp_future.done():
-                self._resp_future.set_result(data)
-        except Exception as e:
-            print(f"[BRIDGE PARSE ERROR] {e}")
-
-pc_bridge = PCBridgeManager()
-pc_tools.set_bridge_instance(pc_bridge)
-
-@app.websocket("/ws/pc-bridge")
-async def pc_bridge_route(websocket: WebSocket):
-    await websocket.accept()
-    await pc_bridge.register(websocket)
-    try:
-        while True:
-            data = await websocket.receive_text()
-            await pc_bridge.handle_response(data)
-    except WebSocketDisconnect:
-        pc_bridge.disconnect()
-    except Exception as e:
-        pc_bridge.disconnect()
-# ---------------------------------------------------------
-
-# ==========================================
-# CLOUD VOICE PIPELINE (JARVIS FULL-DUPLEX)
-# ==========================================
-
-groq_voice_client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
-
-
-@app.get("/api/system-greeting")
-async def system_greeting():
-    greeting_text = (
-        "System R.I.A.N. is online. Direct Neural Link active and ready, Manish."
-    )
-    communicate = edge_tts.Communicate(
-        greeting_text, "en-US-ChristopherNeural"
-    )
-    audio_stream = io.BytesIO()
-    async for chunk in communicate.stream():
-        if chunk["type"] == "audio":
-            audio_stream.write(chunk["data"])
-    audio_stream.seek(0)
-    audio_b64 = base64.b64encode(audio_stream.getvalue()).decode("utf-8")
-    return {"message": greeting_text, "audio_b64": audio_b64}
-
-
-@app.post("/api/voice-query")
-async def voice_query_handler(file: UploadFile = File(...)):
-    try:
-        audio_bytes = await file.read()
-        transcription = groq_voice_client.audio.transcriptions.create(
-            file=("audio.webm", audio_bytes),
-            model="whisper-large-v3",
-            prompt="Manish, RIAN, Hinglish, Notepad, YouTube, type, open, shortcuts, system commands",
-            response_format="json",
-        )
-        user_text = transcription.text.strip()
-
-        direct_reply = await process_and_dispatch_action(user_text)
-        if direct_reply:
-            return {"user_text": user_text, "response_text": direct_reply, "audio": None}
-
-        print(f"[*] Cloud Voice Transcribed: '{user_text}'")
-
-        if not user_text:
-            return {"user_text": "", "response_text": "I didn't catch that."}
-
-        response_text = await assistant_instance.process_query(user_text)
-
-        communicate = edge_tts.Communicate(
-            response_text, "en-US-ChristopherNeural"
-        )
-        audio_stream = io.BytesIO()
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                audio_stream.write(chunk["data"])
-        audio_stream.seek(0)
-        audio_b64 = base64.b64encode(audio_stream.getvalue()).decode("utf-8")
-
-        return {
-            "user_text": user_text,
-            "response_text": response_text,
-            "audio_b64": audio_b64,
-        }
-    except Exception as e:
-        print(f"[!] Voice Pipeline Error: {e}")
-        return {"user_text": "", "response_text": f"Error: {str(e)}"}
-
-
-# ==========================================
-# MAIN EXECUTION ENTRY POINT (ALWAYS AT THE END)
+# MAIN EXECUTION ENTRY POINT
 # ==========================================
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--cli":
-        asyncio.run(terminal_main())
-    else:
-        import uvicorn
-
-        uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=True)        
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=True)
+EOF
+docker restart rian_fastapi
