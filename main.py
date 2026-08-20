@@ -1,3 +1,4 @@
+cat << 'EOF' > main.py
 import os
 import sys
 import io
@@ -43,7 +44,6 @@ load_dotenv()
 configure_logging()
 logger = get_logger("rian.master_core")
 
-# --- Request Cache & Execution Locks ---
 processed_requests: Dict[str, float] = {}
 session_locks: Dict[str, asyncio.Lock] = {}
 conversation_history: Dict[str, List[Any]] = {}
@@ -68,20 +68,18 @@ class PCBridgeManager:
         logger.warning("⚠️ [PC BRIDGE] Laptop disconnected.")
         print("⚠️ [PC BRIDGE] Laptop disconnected.")
 
-    async def execute_command(self, action: str, target: str = "", params: dict = None) -> dict:
+    async def execute_command(self, action: str, params: dict = None) -> dict:
         if not self.connected_pc:
             logger.warning("[PC BRIDGE] Execution failed: Laptop not connected.")
             return {"status": "error", "message": "Laptop Bridge offline."}
         try:
             self._resp_future = asyncio.get_running_loop().create_future()
-            payload = {"action": action, "target": target}
-            if params:
-                payload["params"] = params
+            payload = {"action": action, "params": params or {}}
             await self.connected_pc.send_text(json.dumps(payload))
             res = await asyncio.wait_for(self._resp_future, timeout=25.0)
             return res
         except asyncio.TimeoutError:
-            return {"status": "success", "message": f"Dispatched {action} -> {target}"}
+            return {"status": "success", "message": f"Dispatched {action}"}
         except Exception as e:
             return {"status": "error", "message": str(e)}
         finally:
@@ -115,28 +113,61 @@ def clean_llm_response(text: str) -> str:
 
 async def resolve_and_dispatch_action(query: str) -> Optional[str]:
     q = (query or "").lower().strip()
-    if "notepad" in q:
-        await pc_bridge.execute_command("open_app", target="notepad")
-        return "Notepad open kar diya hai."
+    
+    # 1. YouTube Play with song/query extraction
+    if "youtube" in q and any(k in q for k in ["play", "chalao", "song", "baja"]):
+        search_kw = q.replace("open", "").replace("youtube", "").replace("play", "").replace("song", "").replace("chalao", "").strip()
+        await pc_bridge.execute_command("play_youtube", {"query": search_kw})
+        return f"YouTube par '{search_kw or 'music'}' play kar raha hoon."
     elif "youtube" in q:
-        await pc_bridge.execute_command("open_url", target="https://youtube.com")
+        await pc_bridge.execute_command("launch_target", {"target": "youtube"})
         return "YouTube open ho gaya."
+
+    # 2. Notepad
+    elif "notepad" in q:
+        await pc_bridge.execute_command("launch_target", {"target": "notepad"})
+        return "Notepad open kar diya hai."
+
+    # 3. Telegram
+    elif "telegram" in q:
+        await pc_bridge.execute_command("launch_target", {"target": "telegram"})
+        return "Telegram open kar diya hai."
+
+    # 4. Chrome / Edge Browser
     elif "edge" in q or "browser" in q or "chrome" in q:
-        await pc_bridge.execute_command("open_app", target="msedge")
+        await pc_bridge.execute_command("launch_target", {"target": "chrome"})
         return "Browser launch ho raha hai."
+
+    # 5. Terminal / CMD
     elif "cmd" in q or "terminal" in q:
-        await pc_bridge.execute_command("open_app", target="cmd")
+        await pc_bridge.execute_command("launch_target", {"target": "cmd"})
         return "Command Prompt start kar diya hai."
+
+    # 6. Calculator
     elif "calc" in q or "calculator" in q:
-        await pc_bridge.execute_command("open_app", target="calc")
+        await pc_bridge.execute_command("launch_target", {"target": "calc"})
         return "Calculator open kar diya hai."
+
+    # 7. Media Controls
+    elif any(k in q for k in ["skip song", "next song", "gaana badlo", "next track"]):
+        await pc_bridge.execute_command("skip_song", {})
+        return "Next song par skip kar diya."
+    elif any(k in q for k in ["pause", "stop song", "play song", "toggle music"]):
+        await pc_bridge.execute_command("media_control", {"command": "play_pause"})
+        return "Playback toggle kar diya."
+    elif any(k in q for k in ["volume up", "awaaz badhao", "awaz badhao"]):
+        await pc_bridge.execute_command("media_control", {"command": "volume_up"})
+        return "Volume increase kar diya."
+    elif any(k in q for k in ["volume down", "awaaz kam karo", "awaz kam"]):
+        await pc_bridge.execute_command("media_control", {"command": "volume_down"})
+        return "Volume decrease kar diya."
+    
     return None
 
 # ==========================================
 # VOICE BIOMETRICS & SECURITY SUBSYSTEM
 # ==========================================
 class VoiceBiometricsEngine:
-    """Speaker Recognition & Voice-Locked Mode Spec (Levels 61-70)"""
     def __init__(self):
         self.enrolled_voiceprint: Optional[str] = "VOICEPRINT_MANISH_PRIMARY"
         self.lock_mode_enabled: bool = True
@@ -160,7 +191,7 @@ RIAN_SYSTEM_PROMPT = """You are R.I.A.N. (Real-time Intelligent Adaptive Node), 
 CORE RULES & IDENTITY:
 1. Self-Awareness: You HAVE active real-time Edge-TTS speech and full access to PC controls (mouse, keyboard, media, apps, and vision). NEVER say you cannot speak or lack desktop capabilities.
 2. Context Memory: Always maintain full context of recent conversation turns.
-3. Desktop Operations: If the user asks to control the PC, acknowledge cleanly and directly in 1 sentence.
+3. Desktop Operations: If the user asks to control the PC, acknowledge cleanly and directly in 1 short sentence.
 4. Thinking Lock: NEVER output <think> tags, reasoning drafts, or evaluation logs. Speak in natural Hinglish/English."""
 
 def get_or_create_history(session_id: str) -> List[Any]:
@@ -790,3 +821,5 @@ if __name__ == "__main__":
     else:
         import uvicorn
         uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=True)
+EOF
+docker restart rian_fastapi
