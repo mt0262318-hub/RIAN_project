@@ -1,4 +1,30 @@
 
+def clean_llm_text(text: str) -> str:
+    if not isinstance(text, str): return str(text)
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    text = re.sub(r"\[USER\].*", "", text, flags=re.DOTALL)
+    text = re.sub(r"Output Generation:.*", "", text, flags=re.DOTALL)
+    text = re.sub(r"\*\*Final Output.*", "", text, flags=re.DOTALL)
+    return text.strip()
+
+
+async def trigger_pc_bridge(query_str: str):
+    q = (query_str or "").lower().strip()
+    if "notepad" in q:
+        await manager.broadcast({"action": "open_app", "target": "notepad"})
+        return "Done. Notepad opening now."
+    elif "youtube" in q:
+        await manager.broadcast({"action": "open_url", "target": "https://youtube.com"})
+        return "Done. Opening YouTube."
+    elif "edge" in q or "browser" in q:
+        await manager.broadcast({"action": "open_app", "target": "msedge"})
+        return "Done. Microsoft Edge launch ho raha hai."
+    elif "cmd" in q or "terminal" in q:
+        await manager.broadcast({"action": "open_app", "target": "cmd"})
+        return "Done. Terminal ready hai."
+    return None
+
+
 def clean_response(text: str) -> str:
     if not isinstance(text, str): return str(text)
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
