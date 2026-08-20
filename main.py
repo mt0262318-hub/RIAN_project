@@ -1,3 +1,4 @@
+from services.ingress_router import ingress_bp
 from tools.vault_tool_schema import VAULT_TOOLS, handle_vault_call
 from langchain_core.messages import SystemMessage, HumanMessage
 import os
@@ -946,3 +947,4 @@ if __name__ == "__main__":
         import uvicorn
 
         uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=True)        
+app.include_router(ingress_bp)
