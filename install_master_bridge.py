@@ -1,4 +1,9 @@
+import os
 
+print("[INFO] Setting up Professional Voice Non-Blocking & Telegram Auto-Sync Daemon...")
+
+# 1. Creating the background voice/automation bridge script
+bridge_code = """
 import time
 import threading
 import pyautogui
@@ -26,3 +31,10 @@ if __name__ == "__main__":
     print("[SUCCESS] R.I.A.N. PC Control & Voice Bridge initialized smoothly.")
     while True:
         time.sleep(10)
+"""
+
+with open("rian_hybrid.py", "w") as f:
+    f.write(bridge_code)
+
+print("[INFO] rian_hybrid.py created successfully.")
+print("[SUCCESS] Master bridge setup completed. You can now run it in background!")
