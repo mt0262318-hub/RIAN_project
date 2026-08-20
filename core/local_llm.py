@@ -16,7 +16,10 @@ class LocalLLMEngine:
         try:
             response = requests.post(self.generate_url, json=payload, timeout=60)
             if response.status_code == 200:
-                return response.json().get("response", "").strip()
+                import re
+        if isinstance(response, str):
+            response = re.sub(r"<think>.*?</think>", "", response, flags=re.DOTALL).strip()
+        return response.json().get("response", "").strip()
             return f"Error: Local model returned status code {response.status_code}"
         except Exception as e:
             return f"Error communicating with local LLM engine: {str(e)}"
