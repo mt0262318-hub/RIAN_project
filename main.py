@@ -1,4 +1,29 @@
 
+def clean_response(text: str) -> str:
+    if not isinstance(text, str): return str(text)
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    text = re.sub(r"\[USER\].*", "", text, flags=re.DOTALL)
+    text = re.sub(r"Output Generation:.*", "", text, flags=re.DOTALL)
+    return text.strip()
+
+
+async def handle_direct_action(txt: str):
+    t = (txt or "").lower().strip()
+    if "notepad" in t:
+        await manager.broadcast({"action": "open_app", "target": "notepad"})
+        return "Notepad khol raha hoon."
+    elif "youtube" in t:
+        await manager.broadcast({"action": "open_url", "target": "https://youtube.com"})
+        return "YouTube open ho gaya."
+    elif "edge" in t or "browser" in t:
+        await manager.broadcast({"action": "open_app", "target": "msedge"})
+        return "Microsoft Edge launch ho raha hai."
+    elif "cmd" in t or "terminal" in t:
+        await manager.broadcast({"action": "open_app", "target": "cmd"})
+        return "Command Prompt ready hai."
+    return None
+
+
 async def execute_bridge_action(raw_text: str):
     txt = (raw_text or "").lower()
     if "notepad" in txt:
