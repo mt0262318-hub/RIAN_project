@@ -245,8 +245,6 @@ class RIANAssistant:
 # ==========================================
 assistant_instance = RIANAssistant()
 app = FastAPI(title="J.I.V.A. / R.I.A.N. Autonomous AI Master")
-from services.ingress_router import ingress_bp
-app.include_router(ingress_bp)
 app.include_router(ingress_bp)
 
 
