@@ -1,7 +1,12 @@
 import os
+import sys
 import json
 import logging
 from datetime import datetime
+
+# Add root directory to python path for imports
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from sqlalchemy import text
 from database import engine
 
@@ -21,9 +26,13 @@ def run_nightly_reflection():
     """)
     
     records = []
-    with engine.connect() as conn:
-        result = conn.execute(fetch_query)
-        records = [dict(row._mapping) for row in result]
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(fetch_query)
+            records = [dict(row._mapping) for row in result]
+    except Exception as e:
+        print(f"❌ DB Fetch Error: {e}")
+        return
         
     if not records:
         print("ℹ️ No unreviewed interactions found for evaluation.")
@@ -33,7 +42,6 @@ def run_nightly_reflection():
     curated_data = []
 
     for item in records:
-        # Standard Instruction-Input-Output format for AI fine-tuning
         entry = {
             "instruction": "You are R.I.A.N., an autonomous AI assistant.",
             "input": item["user_input"],
@@ -47,7 +55,7 @@ def run_nightly_reflection():
         for entry in curated_data:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
-    # Mark as reviewed
+    # Mark records as reviewed
     record_ids = [r["id"] for r in records]
     with engine.connect() as conn:
         conn.execute(
@@ -65,7 +73,7 @@ def run_nightly_reflection():
             os.remove(dataset_filename)
         print(f"🚀 Synced {dataset_filename} to Cloud Vault & Purged locally!")
     except Exception as e:
-        print(f"⚠️ Vault upload hook pending: {e}")
+        print(f"⚠️ Cloud Vault sync hook notice: {e}")
 
 if __name__ == "__main__":
     run_nightly_reflection()
