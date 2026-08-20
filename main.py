@@ -369,6 +369,16 @@ async def websocket_telemetry(websocket: WebSocket):
                 continue
             payload = json.loads(data)
             query = payload.get("query", payload.get("text", "")).strip()
+            q_low = query.lower()
+            if "notepad" in q_low:
+                await pc_bridge.execute_command("launch_target", {"target": "notepad"})
+                await websocket.send_json({"type": "response", "response": "Notepad open kar diya hai."})
+                continue
+            elif "youtube" in q_low:
+                search_kw = q_low.replace("open", "").replace("youtube", "").replace("play", "").strip()
+                await pc_bridge.execute_command("play_youtube", {"query": search_kw or "music"})
+                await websocket.send_json({"type": "response", "response": "YouTube play ho raha hai."})
+                continue
             user_id = payload.get("user_id", "web_user_01")
 
             if not query:
