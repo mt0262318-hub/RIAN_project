@@ -1,4 +1,21 @@
 
+async def execute_bridge_action(raw_text: str):
+    txt = (raw_text or "").lower()
+    if "notepad" in txt:
+        await manager.broadcast({"action": "open_app", "target": "notepad"})
+        return "Opening Notepad for you."
+    elif "youtube" in txt:
+        await manager.broadcast({"action": "open_url", "target": "https://youtube.com"})
+        return "Opening YouTube now."
+    elif "edge" in txt or "browser" in txt:
+        await manager.broadcast({"action": "open_app", "target": "msedge"})
+        return "Opening Microsoft Edge."
+    elif "cmd" in txt or "terminal" in txt:
+        await manager.broadcast({"action": "open_app", "target": "cmd"})
+        return "Launching Terminal."
+    return None
+
+
 def sanitize_rian_response(text: str) -> str:
     if not isinstance(text, str):
         return str(text)
