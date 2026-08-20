@@ -245,6 +245,7 @@ class RIANAssistant:
 # ==========================================
 assistant_instance = RIANAssistant()
 app = FastAPI(title="J.I.V.A. / R.I.A.N. Autonomous AI Master")
+app.include_router(ingress_bp)
 
 
 class ConnectionManager:
@@ -947,5 +948,3 @@ if __name__ == "__main__":
         import uvicorn
 
         uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=True)        
-
-app.include_router(ingress_bp)
