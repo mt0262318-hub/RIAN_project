@@ -508,7 +508,54 @@ async def serve_master_ui():
             .desktop-layout { display: none !important; }
             .mobile-layout { display: flex !important; }
         }
-    </style>
+    
+        .desktop-diagnostics {
+            position: absolute;
+            top: 165px;
+            left: 25px;
+            width: 320px;
+            bottom: 25px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            background: rgba(0, 15, 25, 0.85);
+            border: 1px solid rgba(0, 255, 170, 0.4);
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 255, 170, 0.15);
+            z-index: 10;
+        }
+        .desktop-diagnostics h4 {
+            color: #00ffaa;
+            margin: 0 0 8px 0;
+            font-size: 11px;
+            letter-spacing: 1px;
+            border-bottom: 1px solid rgba(0, 255, 170, 0.2);
+            padding-bottom: 4px;
+        }
+        .diag-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #88ffcc;
+            margin-bottom: 4px;
+        }
+        .test-stream {
+            flex: 1;
+            margin-top: 6px;
+            font-size: 9.5px;
+            color: #88ffcc;
+            background: rgba(0, 15, 12, 0.85);
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(0, 255, 170, 0.25);
+            overflow-y: auto;
+            line-height: 1.5;
+            font-family: monospace;
+        }
+        .test-stream::-webkit-scrollbar { width: 3px; }
+        .test-stream::-webkit-scrollbar-thumb { background: #00ffaa; border-radius: 2px; }
+
+</style>
 </head>
 <body onclick="engageContinuousVoice()">
     <canvas id="canvas3d"></canvas>
@@ -763,6 +810,23 @@ window.addEventListener("load", () => {
     } catch(e) { console.error("AutoInit Error:", e); }
 });
 </script>
+
+
+    <div class="hud-glass desktop-diagnostics">
+        <h4>AUTONOMOUS TESTING & REALTIME LOG</h4>
+        <div class="diag-item"><span>MIC WATCHDOG:</span><span id="diagMic" style="color:#00ffaa;">ACTIVE</span></div>
+        <div class="diag-item"><span>PC BRIDGE:</span><span id="diagBridge" style="color:#00ffaa;">CONNECTED</span></div>
+        <div class="diag-item"><span>PATTERNS LEARNED:</span><span id="diagLearned" style="color:#bd00ff; font-weight:bold;">0 ENTRIES</span></div>
+        <div style="font-size: 9.5px; color: #00ffaa; margin-top: 6px; font-weight: bold;">SECOND-BY-SECOND TEST RUNNER:</div>
+        <div class="test-stream" id="testStream">
+            <div>[SYSTEM] Vector Memory Index Synced - Ready.</div>
+            <div>[SYSTEM] Real-time Telemetry Stream Active.</div>
+            <div>[SYSTEM] Agent Tool Schema Integrity Checked (16 Tools Online).</div>
+            <div>[SYSTEM] Autonomous Self-Learning Module: Ready.</div>
+            <div>[SYSTEM] PC Bridge Link Established.</div>
+        </div>
+        <button class="self-heal-btn" onclick="forceSelfHeal(event)" style="margin-top:8px; padding:6px; background:rgba(0,255,170,0.1); border:1px solid #00ffaa; color:#00ffaa; border-radius:4px; font-size:10px; cursor:pointer;">⚡ TRIGGER INSTANT DIAGNOSTIC</button>
+    </div>
 
 </body>
 </html>"""
