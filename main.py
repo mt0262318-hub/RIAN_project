@@ -547,7 +547,16 @@ async def serve_master_ui():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>J.I.V.A. / R.I.A.N. Neural Interface</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">
+    window.addEventListener("DOMContentLoaded", () => {
+        if (typeof initSphere === "function") {
+            initSphere();
+        } else if (typeof initSphereOnce === "function") {
+            initSphereOnce();
+        }
+    });
+
+</script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; user-select: none; }
         body { background: #000308; color: #00e5ff; overflow: hidden; height: 100vh; width: 100vw; position: relative; }
@@ -927,7 +936,16 @@ async def serve_master_ui():
             connectSocket();
             setTimeout(startContinuousVoiceEngine, 500);
         };
-    </script>
+    
+    window.addEventListener("DOMContentLoaded", () => {
+        if (typeof initSphere === "function") {
+            initSphere();
+        } else if (typeof initSphereOnce === "function") {
+            initSphereOnce();
+        }
+    });
+
+</script>
 </body>
 </html>"""
     return HTMLResponse(content=html_content)
