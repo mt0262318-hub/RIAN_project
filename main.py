@@ -1012,9 +1012,6 @@ active_bridge_ws = None
 
 @app.post("/inspect")
 
-
-
-@app.post("/inspect")
 async def inspect_screen():
     global active_bridge_ws
     if not active_bridge_ws:
