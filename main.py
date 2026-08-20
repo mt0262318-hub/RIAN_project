@@ -537,10 +537,18 @@ async def serve_master_ui():
 
         /* LIVE DIAGNOSTICS & SELF-HEALING BOX (RED RECTANGLE AREA) */
         .desktop-diagnostics {
-            top: 155px; left: 30px; width: 280px; padding: 16px;
+            top: 135px; left: 25px; width: 340px; bottom: 85px; padding: 14px;
+            display: flex; flex-direction: column;
             border-color: rgba(0, 255, 170, 0.5);
             box-shadow: 0 0 20px rgba(0, 255, 170, 0.2);
         }
+        .test-stream {
+            flex: 1; margin-top: 6px; font-size: 10px; color: #88ffcc;
+            background: rgba(0, 15, 12, 0.75); padding: 8px; border-radius: 4px;
+            border: 1px solid rgba(0, 255, 170, 0.25); overflow-y: auto; line-height: 1.5;
+        }
+        .test-stream::-webkit-scrollbar { width: 3px; }
+        .test-stream::-webkit-scrollbar-thumb { background: #00ffaa; border-radius: 2px; }
         .desktop-diagnostics h4 { font-size: 13px; letter-spacing: 2px; color: #00ffaa; margin-bottom: 8px; }
         .diag-item { font-size: 11px; display: flex; justify-content: space-between; margin-bottom: 6px; }
         .diag-val-ok { color: #00ffaa; font-weight: bold; }
@@ -594,14 +602,16 @@ async def serve_master_ui():
             <p>VOICE LOCK: <span style="color:#00ffaa;">ACTIVE (OWNER)</span></p>
         </div>
 
-        <!-- NEW REAL-TIME DIAGNOSTIC & SELF-HEAL BOX -->
         <div class="hud-glass desktop-diagnostics">
-            <h4>LIVE SYSTEM HEALTH</h4>
-            <div class="diag-item"><span>MIC WATCHDOG:</span><span id="diagMic" class="diag-val-warn">STARTING...</span></div>
-            <div class="diag-item"><span>PC BRIDGE:</span><span id="diagBridge" class="diag-val-warn">CHECKING...</span></div>
-            <div class="diag-item"><span>TELEMETRY WS:</span><span id="diagWS" class="diag-val-warn">CONNECTING...</span></div>
-            <div class="diag-item"><span>LAST RECOVERY:</span><span id="diagHeal" style="color:#9feeff;">ACTIVE</span></div>
-            <button class="self-heal-btn" onclick="forceSelfHeal(event)">⚡ FORCE SELF-HEAL</button>
+            <h4>AUTONOMOUS TESTING & REALTIME LOG</h4>
+            <div class="diag-item"><span>MIC WATCHDOG:</span><span id="diagMic" class="diag-val-ok">ACTIVE</span></div>
+            <div class="diag-item"><span>PC BRIDGE:</span><span id="diagBridge" class="diag-val-ok">CONNECTED</span></div>
+            <div class="diag-item"><span>PATTERNS LEARNED:</span><span id="diagLearned" style="color:#bd00ff; font-weight:bold;">0 ENTRIES</span></div>
+            <p style="font-size: 10px; color: #00ffaa; margin-top: 6px;">SECOND-BY-SECOND TEST RUNNER:</p>
+            <div class="test-stream" id="testStream">
+                <div>[RUNNING] Second-by-Second Telemetry Active...</div>
+            </div>
+            <button class="self-heal-btn" onclick="forceSelfHeal(event)">⚡ TRIGGER INSTANT DIAGNOSTIC</button>
         </div>
 
         <div class="memory-badge dt-node-1">[MEMORY] User_Prefs</div>
@@ -654,10 +664,13 @@ async def serve_master_ui():
                 const logBox = document.getElementById("desktopLogStream");
 
                 if (packet.type === "health_status") {
-                    if (packet.bridge_online) {
-                        updateDiag("diagBridge", "CONNECTED (ONLINE)", "diag-val-ok");
-                    } else {
-                        updateDiag("diagBridge", "OFFLINE (RUN local_bridge.py)", "diag-val-err");
+                    updateDiag("diagBridge", packet.bridge_online ? "CONNECTED (ONLINE)" : "OFFLINE", packet.bridge_online ? "diag-val-ok" : "diag-val-err");
+                    const lEl = document.getElementById("diagLearned");
+                    if (lEl && packet.learned_patterns !== undefined) lEl.innerText = packet.learned_patterns + " ADAPTED";
+                    const testBox = document.getElementById("testStream");
+                    if (testBox && packet.diagnostics_log) {
+                        testBox.innerHTML = packet.diagnostics_log.map(item => `<div>${item}</div>`).join("");
+                        testBox.scrollTop = testBox.scrollHeight;
                     }
                 }
                 if (packet.type === "log" && logBox) {
