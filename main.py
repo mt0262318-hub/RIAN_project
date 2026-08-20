@@ -168,7 +168,10 @@ class RIANAssistant:
     async def process_query(self, query: str, user_id: str = "default_user") -> str:
         """Multi-Stage Intercept, Context Augment & LangGraph Execution"""
         try:
-            session = await session_manager.get_or_create_session(user_id)
+            session = await session_manager
+            direct_action = await resolve_and_dispatch_action(query)
+            if direct_action:
+                return direct_action.get_or_create_session(user_id)
             query_lower = query.lower().strip()
 
            # Fast Context Interceptions: Persona Switch
