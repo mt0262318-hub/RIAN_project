@@ -165,7 +165,7 @@ class RIANAssistant:
 
     async def retrieve_relevant_memory(self, query: str) -> str:
         """Fetch memory embeddings and semantic context"""
-            if vector_db:
+if vector_db:
                 matches = await asyncio.to_thread(vector_db.search, query, top_k=2)
                 if matches:
                     return " | ".join([m.get("text", "") for m in matches])
