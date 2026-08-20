@@ -1,27 +1,40 @@
-import requests
-import json
+import os
+import re
+from groq import Groq
+from dotenv import load_dotenv
 
-class LocalLLMEngine:
-    def __init__(self, model_name: str = "llama3:8b-instruct-q4_K_M", base_url: str = "http://127.0.0.1:11434"):
-        self.model_name = model_name
-        self.generate_url = f"{base_url}/api/generate"
+load_dotenv()
 
-    def generate_response(self, prompt: str, system_prompt: str = "You are RIAN, an advanced offline AI assistant.") -> str:
-        payload = {
-            "model": self.model_name,
-            "prompt": prompt,
-            "system": system_prompt,
-            "stream": False
-        }
+class LocalLLM:
+    def __init__(self):
+        self.api_key = os.getenv("GROQ_API_KEY", "")
+        self.model = os.getenv("GROQ_MODEL", "qwen/qwen3.6-27b")
+        if self.api_key:
+            self.client = Groq(api_key=self.api_key)
+        else:
+            self.client = None
+
+    def generate(self, prompt: str, system_prompt: str = "") -> str:
+        if not self.client:
+            return "Groq API key not configured."
+        
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        
         try:
-            response = requests.post(self.generate_url, json=payload, timeout=60)
-            if response.status_code == 200:
-                import re
-        if isinstance(response, str):
-            response = re.sub(r"<think>.*?</think>", "", response, flags=re.DOTALL).strip()
-        return response.json().get("response", "").strip()
-            return f"Error: Local model returned status code {response.status_code}"
+            chat_completion = self.client.chat.completions.create(
+                messages=messages,
+                model=self.model,
+                temperature=0.7,
+                max_tokens=1024
+            )
+            raw_res = chat_completion.choices[0].message.content or ""
+            # Strip deep thinking tags cleanly
+            clean_res = re.sub(r"<think>.*?</think>", "", raw_res, flags=re.DOTALL).strip()
+            return clean_res
         except Exception as e:
-            return f"Error communicating with local LLM engine: {str(e)}"
+            return f"Error processing query: {str(e)}"
 
-local_llm = LocalLLMEngine()
+local_llm = LocalLLM()
