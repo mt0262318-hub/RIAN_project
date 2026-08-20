@@ -29,15 +29,15 @@ class AutonomousLearner:
 
         if status == "success" and query.strip():
             try:
-                entry = f"Pattern: User '{query}' -> Executed via '{action_taken}'"
+                entry = f"Pattern: User {query} -> Executed via {action_taken}"
                 if vector_db:
                     await asyncio.to_thread(vector_db.add_texts, [entry], [{"type": "auto_learn", "time": time.time()}])
                 self.learned_patterns_count += 1
-                self.add_test_log(f"🧠 [LEARNED] Indexed: '{query[:20]}...'")
+                self.add_test_log(f"🧠 [LEARNED] Indexed: {query[:20]}")
             except Exception:
                 pass
         elif status == "failed":
-            self.add_test_log(f"⚠️ [AUTO-HEAL] Analyzed failed: '{query[:20]}...'")
+            self.add_test_log(f"⚠️ [AUTO-HEAL] Analyzed failed: {query[:20]}")
 
     def add_test_log(self, text: str):
         self.active_tests_log.append(f"[{time.strftime('%H:%M:%S')}] {text}")
