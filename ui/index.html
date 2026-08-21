@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta name="viewport" content="width=1200, initial-scale=0.33, maximum-scale=3.0, user-scalable=yes">
+
 
     <meta charset="UTF-8">
     <title>J.I.V.A. / R.I.A.N. Neural Interface</title>
@@ -96,7 +96,7 @@
 }
 </style>
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
 <style>
 @media screen and (max-width: 768px) {
     html, body {
@@ -117,6 +117,30 @@
     .container, #app, canvas {
         transform: scale(0.38);
         transform-origin: center center;
+    }
+}
+</style>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+@media screen and (max-width: 768px) {
+    body {
+        width: 100vw !important;
+        height: 100vh !important;
+        overflow: auto !important;
+        background: #000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+    }
+    .container, #app, canvas {
+        max-width: 100% !important;
+        height: auto !important;
+        transform: scale(0.9) !important;
+        transform-origin: top center !important;
     }
 }
 </style>
