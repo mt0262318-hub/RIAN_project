@@ -144,7 +144,12 @@ window.addEventListener('DOMContentLoaded', () => {
             <div class="stream-status" id="streamStatus">SYSTEM READY - TAP MIC OR SPEAK</div>
             <div class="input-box-container">
                 <button id="micToggleBtn" style="padding: 0 18px;">🎙️ REC</button>
-                <input type="text" id="userInput" placeholder="Type command or click REC..." autocomplete="off">
+                
+    <div id="neural-media-controls" style="display: flex; gap: 6px; align-items: center; margin-right: 8px;">
+        <button id="permanent-cam-btn" title="Activate Camera" style="background: rgba(0,255,255,0.05); border: 1px solid #00ffff; color: #00ffff; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-family: monospace;">📷</button>
+        <button id="permanent-mic-btn" title="Activate Microphone" style="background: rgba(0,255,255,0.05); border: 1px solid #00ffff; color: #00ffff; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-family: monospace;">🎙️</button>
+    </div>
+    <input type="text" id="userInput" placeholder="Type command or click REC..." autocomplete="off">
                 <button id="sendBtn">Send</button>
             </div>
         </div>
