@@ -16,3 +16,14 @@ modern_input_html = """
 </div>
 """
 print("Modern glass input component prepared safely.")
+
+# Safe injection into main app UI
+with open("main.py", "r") as f:
+    content = f.read()
+
+if "modern_input_html" not in content:
+    with open("main.py", "a") as f:
+        f.write("\n# Injected Modern Glass Input Bar\ncomponents.html(modern_input_html, height=80)\n")
+    print("Successfully injected glass input bar into main.py!")
+else:
+    print("Glass input component already present in main.py.")
