@@ -1,89 +1,36 @@
 import asyncio
 import time
-import logging
-from typing import Dict, Any, List
-from core.vector_db import vector_db
-from config.logging_config import get_logger
+from duckduckgo_search import DDGS
+from memory.chroma_store import memory_store
 
-logger = get_logger("rian.autonomous_learner")
+TOPICS = [
+    "advanced system architecture patterns",
+    "python fast asynchronous pipelines",
+    "distributed ai agent communication",
+    "modern vector database optimizations"
+]
 
-class AutonomousLearner:
-    def __init__(self):
-        self.audit_log: List[Dict[str, Any]] = []
-        self.learned_patterns_count: int = 0
-        self.active_tests_log: List[str] = [
-            "[SYSTEM] Autonomous Self-Learning Initialized",
-            "[SYSTEM] Real-time Telemetry Stream Active"
-        ]
+def synthesize_knowledge(topic: str):
+    try:
+        with DDGS() as ddgs:
+            results = list(ddgs.text(topic, max_results=3))
+            if not results:
+                return
+            combined_text = "\n".join([f"- {r['title']}: {r['body']}" for r in results])
+            memory_store.add_texts(
+                texts=[f"Autonomous Learning ({topic}):\n{combined_text}"],
+                metadatas=[{"source": "autonomous_learner", "topic": topic, "timestamp": str(time.time())}]
+            )
+            print(f"Learned and vectorized topic: {topic}")
+    except Exception as e:
+        print(f"Error learning topic {topic}: {e}")
 
-    async def log_and_learn(self, query: str, action_taken: str, status: str):
-        record = {
-            "timestamp": time.time(),
-            "query": query,
-            "action": action_taken,
-            "status": status
-        }
-        self.audit_log.append(record)
-        if len(self.audit_log) > 200:
-            self.audit_log.pop(0)
+async def continuous_learning_loop():
+    print("R.I.A.N. 24/7 Autonomous Learning Engine Started...")
+    while True:
+        for topic in TOPICS:
+            synthesize_knowledge(topic)
+            await asyncio.sleep(1800)
 
-        if status == "success" and query.strip():
-            try:
-                entry = f"Pattern: User {query} -> Executed via {action_taken}"
-                if vector_db:
-                    await asyncio.to_thread(vector_db.add_texts, [entry], [{"type": "auto_learn", "time": time.time()}])
-                self.learned_patterns_count += 1
-                self.add_test_log(f"🧠 [LEARNED] Indexed: {query[:20]}")
-            except Exception:
-                pass
-        elif status == "failed":
-            self.add_test_log(f"⚠️ [AUTO-HEAL] Analyzed failed: {query[:20]}")
-
-    def add_test_log(self, text: str):
-        self.active_tests_log.append(f"[{time.strftime('%H:%M:%S')}] {text}")
-        if len(self.active_tests_log) > 25:
-            self.active_tests_log.pop(0)
-
-    def get_telemetry(self) -> Dict[str, Any]:
-        return {
-            "learned_patterns": self.learned_patterns_count,
-            "diagnostics_log": self.active_tests_log[-8:]
-        }
-
-autonomous_learner = AutonomousLearner()
-# --- Multi-Modal UI Evolution Trigger ---
-MULTIMODAL_UI_PROPOSAL = """
-<html>
-<head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body { background: #0f172a; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin:0; padding:0; display:flex; flex-direction:column; height:100vh; }
-        .header { padding: 16px; background: #1e293b; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
-        .title { font-weight: 600; font-size: 16px; color: #38bdf8; }
-        .chat-container { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-        .message { max-width: 80%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; }
-        .ai-msg { background: #1e293b; align-self: flex-start; border-bottom-left-radius: 2px; }
-        .input-area { padding: 12px 16px; background: #1e293b; display: flex; align-items: center; gap: 10px; border-top: 1px solid #334155; }
-        .action-btn { background: none; border: none; color: #94a3b8; font-size: 20px; cursor: pointer; padding: 4px; }
-        .action-btn:hover { color: #38bdf8; }
-        .text-input { flex: 1; background: #0f172a; border: 1px solid #334155; border-radius: 20px; padding: 10px 16px; color: white; font-size: 14px; outline: none; }
-        .send-btn { background: #38bdf8; color: #0f172a; border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="title">R.I.A.N. Multi-Modal AI</div>
-        <div style="font-size: 12px; color: #22c55e;">● Active 24/7</div>
-    </div>
-    <div class="chat-container">
-        <div class="message ai-msg">Namaste Manish! Main aapka 24/7 autonomous assistant hoon. Yeh naya multi-modal interface hai jisme mic aur camera support hai.</div>
-    </div>
-    <div class="input-area">
-        <button class="action-btn" title="Add Media / Camera">➕</button>
-        <button class="action-btn" title="Voice Input">🎙️</button>
-        <input type="text5" class="text-input" placeholder="Ask R.I.A.N. anything...">
-        <button class="send-btn">➔</button>
-    </div>
-</body>
-</html>
-"""
+if __name__ == "__main__":
+    asyncio.run(continuous_learning_loop())
