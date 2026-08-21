@@ -1052,49 +1052,7 @@ async def serve_master_ui():
 }
 </style>
 
-<script>
-window.addEventListener('DOMContentLoaded', () => {
-    if (window.innerWidth <= 768) {
-        // Create exact mockup app structure
-        if (!document.getElementById('mobile-exact-app')) {
-            const app = document.createElement('div');
-            app.id = 'mobile-exact-app';
 
-            // 1. Top Section: Status & Logs
-            const topBox = document.createElement('div');
-            topBox.className = 'm-box m-logs';
-            const originalLogs = document.querySelector('.desktop-layout') || document.querySelector('.hud-glass') || document.querySelector('pre');
-            topBox.innerHTML = '<strong>SYSTEM STATUS: ONLINE</strong><br><br>' + (originalLogs ? originalLogs.innerHTML : 'Loading telemetry logs...');
-            app.appendChild(topBox);
-
-            // 2. Center Section: 3D Sphere Canvas
-            const canvasContainer = document.createElement('div');
-            canvasContainer.className = 'm-canvas-container';
-            const canvas = document.getElementById('canvas3d') || document.querySelector('canvas');
-            if (canvas) {
-                canvasContainer.appendChild(canvas);
-            }
-            app.appendChild(canvasContainer);
-
-            // 3. Bottom Section: Listening & Input Box
-            const bottomBox = document.createElement('div');
-            bottomBox.className = 'm-box m-input-area';
-            bottomBox.innerHTML = `
-                <div style="font-size: 12px; color: #00ffcc; text-align: center; margin-bottom: 4px; font-weight: bold;">
-                    LISTENING...<br><span style="font-size: 10px; color: #88ffcc;">(Continuous Stream Active)</span>
-                </div>
-                <div class="m-input-row">
-                    <input type="text" placeholder="Tap or speak command..." id="m-cmd-input">
-                    <button id="m-send-btn">Send</button>
-                </div>
-            `;
-            app.appendChild(bottomBox);
-
-            document.body.appendChild(app);
-        }
-    }
-});
-</script>
 
 </head>
 <body onclick="engageContinuousVoice()">
@@ -1149,427 +1107,7 @@ window.addEventListener('DOMContentLoaded', () => {
         </div>
     </div>
 
-    <script>
-        const isMobile = window.innerWidth < 1024;
-        let ws, recognition, voiceStarted = false;
-
-        function connectSocket() {
-            const loc = window.location;
-            const wsProtocol = loc.protocol === "https:" ? "wss://" : "ws://";
-            ws = new WebSocket(wsProtocol + loc.host + "/ws/telemetry");
-
-            ws.onmessage = function(e) {
-                const packet = JSON.parse(e.data);
-                const logBox = document.getElementById("desktopLogStream");
-
-                if (packet.type === "log" && logBox) {
-                    logBox.innerHTML += `<div>[USER] ${packet.log}</div>`;
-                    logBox.scrollTop = logBox.scrollHeight;
-                }
-                if (packet.type === "response") {
-                    vocalizeOutput(packet.reply);
-                    if (logBox) {
-                        logBox.innerHTML += `<div style="color:#00ffaa;">[RIAN] ${packet.reply}</div>`;
-                        logBox.scrollTop = logBox.scrollHeight;
-                    }
-                }
-                if (packet.type === "state") {
-                    if (document.getElementById("desktopStatus")) document.getElementById("desktopStatus").innerText = packet.state_text;
-                    if (document.getElementById("mobileStatus")) document.getElementById("mobileStatus").innerText = packet.state_text;
-                }
-            };
-            ws.onclose = () => setTimeout(connectSocket, 2000);
-        }
-
-        // 3D Three.js Hologram Scene
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas3d'), alpha: true, antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-
-        let coreMesh, ring1, ring2;
-
-        if (!isMobile) {
-            const pCount = 3800;
-            const pGeo = new THREE.BufferGeometry();
-            const pPos = new Float32Array(pCount * 3);
-            for (let i = 0; i < pCount * 3; i += 3) {
-                const u = Math.random(), v = Math.random();
-                const theta = u * 2.0 * Math.PI, phi = Math.acos(2.0 * v - 1.0);
-                const r = 2.2 + (Math.random() * 0.2);
-                pPos[i] = r * Math.sin(phi) * Math.cos(theta);
-                pPos[i+1] = r * Math.sin(phi) * Math.sin(theta);
-                pPos[i+2] = r * Math.cos(phi);
-            }
-            pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
-            const pMat = new THREE.PointsMaterial({ color: 0x00e5ff, size: 0.038, transparent: true, opacity: 0.85 });
-            coreMesh = new THREE.Points(pGeo, pMat);
-            scene.add(coreMesh);
-
-            const ringGeo1 = new THREE.RingGeometry(3.0, 3.12, 64);
-            const ringMat1 = new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
-            ring1 = new THREE.Mesh(ringGeo1, ringMat1);
-            ring1.rotation.x = Math.PI / 2.3;
-            scene.add(ring1);
-
-            const ringGeo2 = new THREE.RingGeometry(3.2, 3.25, 64);
-            const ringMat2 = new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
-            ring2 = new THREE.Mesh(ringGeo2, ringMat2);
-            ring2.rotation.x = Math.PI / 2.1;
-            ring2.rotation.y = Math.PI / 12;
-            scene.add(ring2);
-
-            camera.position.z = 6.2;
-        } else {
-            const pCount = 2000;
-            const pGeo = new THREE.BufferGeometry();
-            const pPos = new Float32Array(pCount * 3);
-            for (let i = 0; i < pCount * 3; i += 3) {
-                const u = Math.random(), v = Math.random();
-                const theta = u * 2.0 * Math.PI, phi = Math.acos(2.0 * v - 1.0);
-                const r = 1.8 + (Math.sin(theta * 3) * 0.2);
-                pPos[i] = r * Math.sin(phi) * Math.cos(theta);
-                pPos[i+1] = r * Math.sin(phi) * Math.sin(theta);
-                pPos[i+2] = r * Math.cos(phi);
-            }
-            pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
-            const pMat = new THREE.PointsMaterial({ color: 0x00e5ff, size: 0.045, transparent: true, opacity: 0.9 });
-            coreMesh = new THREE.Points(pGeo, pMat);
-            scene.add(coreMesh);
-
-            camera.position.z = 5.0;
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            if (coreMesh) {
-                coreMesh.rotation.y += 0.003;
-                coreMesh.rotation.x += 0.001;
-            }
-            if (ring1) ring1.rotation.z += 0.0035;
-            if (ring2) ring2.rotation.z -= 0.002;
-            renderer.render(scene, camera);
-        }
-        animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        // Speech Synthesis Engine
-        function engageContinuousVoice() {
-            if (voiceStarted) return;
-            voiceStarted = true;
-            vocalizeOutput("Systems fully online, Manish. Listening continuously for commands.");
-            startVoiceLoop();
-        }
-
-        function vocalizeOutput(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                window.speechSynthesis.resume();
-                let clean = text.replace(/\\[.*?\\]/g, '').replace(/[*#_`]/g, '').trim();
-                const utt = new SpeechSynthesisUtterance(clean);
-                utt.rate = 1.0;
-                utt.pitch = 1.0;
-                utt.lang = 'hi-IN';
-                let voices = window.speechSynthesis.getVoices();
-                let v = voices.find(vox => vox.lang.includes('hi') || vox.lang.includes('IN')) || voices[0];
-                if (v) utt.voice = v;
-                window.speechSynthesis.speak(utt);
-            }
-        }
-
-        function startVoiceLoop() {
-            const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechAPI) return;
-
-            recognition = new SpeechAPI();
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            recognition.lang = 'en-US';
-
-            recognition.onresult = function(evt) {
-                let speechText = '';
-                for (let i = evt.resultIndex; i < evt.results.length; ++i) {
-                    speechText += evt.results[i][0].transcript;
-                }
-                const activeInput = isMobile ? document.getElementById('mobileInput') : document.getElementById('desktopInput');
-                if (activeInput) activeInput.value = speechText;
-
-                if (evt.results[evt.results.length - 1].isFinal) {
-                    sendPrompt(speechText, isMobile ? 'mobileInput' : 'desktopInput');
-                }
-            };
-
-            recognition.onerror = function() {
-                setTimeout(() => { try { recognition.start(); } catch(e){} }, 800);
-            };
-
-            recognition.onend = function() {
-                try { recognition.start(); } catch(e){}
-            };
-
-            try { recognition.start(); } catch(e){}
-            if (document.getElementById("desktopStatus")) document.getElementById("desktopStatus").innerText = "LISTENING... (Continuous Stream Active)";
-            if (document.getElementById("mobileStatus")) document.getElementById("mobileStatus").innerText = "LISTENING...";
-        }
-
-        function handleEnter(e, inputId) {
-            if (e.key === 'Enter') {
-                const val = document.getElementById(inputId).value;
-                sendPrompt(val, inputId);
-            }
-        }
-
-        function sendPrompt(query, inputId) {
-            if (!query || !query.trim()) return;
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ query: query, user_id: "web_user_01" }));
-            }
-            if (inputId && document.getElementById(inputId)) {
-                document.getElementById(inputId).value = "";
-            }
-        }
-
-        window.onload = function() {
-            connectSocket();
-        };
-    </script>
-
-    <div class="hud-glass desktop-diagnostics" style="position: absolute; top: 175px; left: 25px; width: 340px; bottom: 25px; padding: 14px; display: flex; flex-direction: column; z-index: 10; background: rgba(3, 15, 29, 0.85); border: 1px solid rgba(0, 255, 170, 0.5);">
-        <h4 style="color: #00ffaa; font-size: 13px; letter-spacing: 2px; margin-bottom: 8px;">AUTONOMOUS TESTING & REALTIME LOG</h4>
-        <div style="font-size: 11px; display: flex; justify-content: space-between; margin-bottom: 6px; color:#fff;"><span>MIC WATCHDOG:</span><span style="color:#00ffaa; font-weight:bold;">ACTIVE</span></div>
-        <div style="font-size: 11px; display: flex; justify-content: space-between; margin-bottom: 6px; color:#fff;"><span>PC BRIDGE:</span><span style="color:#00ffaa; font-weight:bold;">CONNECTED</span></div>
-        <div style="font-size: 11px; display: flex; justify-content: space-between; margin-bottom: 6px; color:#fff;"><span>PATTERNS LEARNED:</span><span style="color:#bd00ff; font-weight:bold;">0 ENTRIES</span></div>
-        <p style="font-size: 10px; color: #00ffaa; margin-top: 6px;">SECOND-BY-SECOND TEST RUNNER:</p>
-        <div style="flex: 1; margin-top: 6px; font-size: 10px; color: #88ffcc; background: rgba(0, 15, 12, 0.75); padding: 8px; border-radius: 4px; border: 1px solid rgba(0, 255, 170, 0.25); overflow-y: auto;" id="testStream">
-            <div>[SYSTEM] Telemetry Active & Synced.</div>
-        </div>
-    </div>
-
-
-    <script>
-        const liveTests = [
-            "Vector Memory Pulse -> 3120 Vectors Synced",
-            "Agent Tool Schema Integrity -> 16 Tools Active",
-            "PC Bridge Link -> Connected (Latency 18ms)",
-            "Autonomous Learner -> Active Monitoring",
-            "Voice Watchdog Stream -> Listening (Active)",
-            "Neural Reasoner Pipeline -> Ready",
-            "Dynamic Cache Sync -> OK",
-            "Self-Healing Watcher -> No Anomalies"
-        ];
-        let testIdx = 0;
-        setInterval(() => {
-            const streamBox = document.getElementById("testStream");
-            if (streamBox) {
-                const nextLog = liveTests[testIdx % liveTests.length];
-                testIdx++;
-                const entry = document.createElement("div");
-                entry.style.cssText = "margin-bottom:3px; border-bottom:1px dotted rgba(0,255,170,0.15);";
-                entry.innerText = `[${new Date().toLocaleTimeString()}] ${nextLog}`;
-                streamBox.appendChild(entry);
-                if (streamBox.childNodes.length > 25) streamBox.removeChild(streamBox.firstChild);
-                streamBox.scrollTop = streamBox.scrollHeight;
-            }
-        }, 1800);
-    </script>
-
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<style>
-@media screen and (max-width: 768px) {
-    /* 100% Transparent Glassmorphism Container matching Reference Image */
-    #mobile-exact-app .m-input-area {
-        background: rgba(0, 10, 15, 0.45) !important;
-        backdrop-filter: blur(6px) !important;
-        -webkit-backdrop-filter: blur(6px) !important;
-        border: 1px solid rgba(0, 255, 204, 0.6) !important;
-        border-radius: 14px !important;
-        padding: 14px !important;
-        box-shadow: 0 0 20px rgba(0, 255, 204, 0.15) inset, 0 0 10px rgba(0, 255, 204, 0.2) !important;
-    }
-
-    /* Status text styling */
-    #mobile-exact-app .m-input-area > div:first-child {
-        font-family: monospace !important;
-        font-size: 11px !important;
-        color: #00ffcc !important;
-        text-align: center !important;
-        margin-bottom: 8px !important;
-        letter-spacing: 0.5px !important;
-        text-shadow: 0 0 5px rgba(0,255,204,0.5) !important;
-    }
-
-    .m-input-row {
-        display: flex !important;
-        gap: 10px !important;
-        align-items: center !important;
-        width: 100% !important;
-    }
-
-    /* Input wrapper matching mockup glass border */
-    .m-input-field-wrapper {
-        flex: 1 !important;
-        position: relative !important;
-        display: flex !important;
-        align-items: center !important;
-        background: rgba(0, 5, 8, 0.6) !important;
-        border: 1px solid rgba(0, 255, 204, 0.7) !important;
-        border-radius: 10px !important;
-        padding: 0 12px !important;
-        height: 42px !important;
-    }
-
-    .m-input-field-wrapper input {
-        width: 100% !important;
-        background: transparent !important;
-        border: none !important;
-        color: #00ffcc !important;
-        padding: 0 !important;
-        font-family: monospace !important;
-        font-size: 12px !important;
-        outline: none !important;
-    }
-
-    .m-input-field-wrapper input::placeholder {
-        color: rgba(0, 255, 204, 0.45) !important;
-    }
-
-    /* Mic icon inside wrapper */
-    .m-mic-icon {
-        width: 18px !important;
-        height: 18px !important;
-        fill: #00ffcc !important;
-        cursor: pointer !important;
-        flex-shrink: 0 !important;
-        margin-left: 8px !important;
-        filter: drop-shadow(0 0 3px rgba(0,255,204,0.6)) !important;
-    }
-
-    /* Send button matching mockup cyan rounded look */
-    .m-input-row button {
-        background: rgba(0, 136, 136, 0.85) !important;
-        border: 1px solid #00ffcc !important;
-        border-radius: 10px !important;
-        color: #ffffff !important;
-        padding: 0 18px !important;
-        height: 42px !important;
-        font-weight: bold !important;
-        font-family: monospace !important;
-        font-size: 13px !important;
-        letter-spacing: 0.5px !important;
-        cursor: pointer !important;
-        flex-shrink: 0 !important;
-        box-shadow: 0 0 10px rgba(0, 255, 204, 0.3) !important;
-        text-shadow: 0 0 3px rgba(0,255,204,0.5) !important;
-    }
-}
-</style>
-
-
-<style>
-/* SAFE MOBILE PERFECT BOX */
-@media screen and (max-width: 768px) {
-    #perfect-mobile-box {
-        display: flex !important;
-        flex-direction: column !important;
-        background: rgba(0, 15, 20, 0.75) !important;
-        backdrop-filter: blur(10px) !important;
-        -webkit-backdrop-filter: blur(10px) !important;
-        border: 1px solid #00ffcc !important;
-        border-radius: 12px !important;
-        padding: 15px !important;
-        margin: 12px auto !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-        box-shadow: 0 0 20px rgba(0, 255, 204, 0.25) !important;
-    }
-}
-/* Hidden by default on Desktop / Laptop */
-#perfect-mobile-box { display: none; }
-</style>
-
-<div id="perfect-mobile-box">
-    <div style="text-align: center; color: #00ffcc; font-family: monospace; font-size: 11px; margin-bottom: 10px; font-weight: bold; letter-spacing: 0.5px;">
-        LISTENING...<br>
-        <span style="font-weight: normal; opacity: 0.85;">(Continuous Stream Active)</span>
-    </div>
-    <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
-        <div style="flex: 1; background: rgba(0, 5, 10, 0.85); border: 1px solid rgba(0, 255, 204, 0.6); border-radius: 8px; display: flex; align-items: center; padding: 0 10px; height: 40px;">
-            <input type="text" placeholder="Tap or speak command..." style="width: 100%; background: transparent; border: none; color: #00ffcc; font-family: monospace; font-size: 12px; outline: none;">
-            <svg style="width: 16px; height: 16px; fill: #00ffcc; flex-shrink: 0; margin-left: 6px; cursor: pointer;" viewBox="0 0 24 24">
-                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-            </svg>
-        </div>
-        <button style="height: 40px; background: rgba(0, 136, 136, 0.9); border: 1px solid #00ffcc; border-radius: 8px; color: #fff; padding: 0 16px; font-family: monospace; font-size: 12px; font-weight: bold; cursor: pointer; flex-shrink: 0; box-shadow: 0 0 8px rgba(0, 255, 204, 0.3);">Send</button>
-    </div>
-</div>
-
-
-<style>
-/* DYNAMIC MOBILE BOX CSS */
-@media screen and (max-width: 768px) {
-    /* Hide old redundant inputs on mobile */
-    form, .input-container {
-        display: none !important;
-    }
-
-    #live-injected-mobile-box {
-        display: flex !important;
-        flex-direction: column !important;
-        background: rgba(0, 15, 20, 0.85) !important;
-        backdrop-filter: blur(10px) !important;
-        -webkit-backdrop-filter: blur(10px) !important;
-        border: 1px solid #00ffcc !important;
-        border-radius: 14px !important;
-        padding: 14px !important;
-        margin: 15px auto !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-        box-shadow: 0 0 20px rgba(0, 255, 204, 0.3) !important;
-        position: relative !important;
-        z-index: 99999 !important;
-    }
-}
-/* Hidden on Desktop */
-#live-injected-mobile-box {
-    display: none;
-}
-</style>
-
-<script>
-/* Dynamic Mobile Box Injector */
-window.addEventListener('DOMContentLoaded', () => {
-    if (window.innerWidth <= 768) {
-        if (!document.getElementById('live-injected-mobile-box')) {
-            const box = document.createElement('div');
-            box.id = 'live-injected-mobile-box';
-            box.innerHTML = `
-                <div style="text-align: center; color: #00ffcc; font-family: monospace; font-size: 11px; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px; line-height: 1.3;">
-                    LISTENING...<br>
-                    <span style="font-weight: normal; opacity: 0.85; font-size: 90%;">(Continuous Stream Active)</span>
-                </div>
-                <div style="display: flex; gap: 8px; align-items: center; width: 100%; box-sizing: border-box;">
-                    <div style="flex: 1; height: 40px; background: rgba(0, 5, 10, 0.9); border: 1px solid rgba(0, 255, 204, 0.6); border-radius: 8px; display: flex; align-items: center; padding: 0 10px; box-sizing: border-box;">
-                        <input type="text" placeholder="Tap or speak command..." style="width: 100%; background: transparent; border: none; color: #00ffcc; font-family: monospace; font-size: 12px; outline: none;">
-                        <svg style="width: 16px; height: 16px; fill: #00ffcc; flex-shrink: 0; margin-left: 6px; cursor: pointer;" viewBox="0 0 24 24">
-                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-                        </svg>
-                    </div>
-                    <button style="height: 40px; background: rgba(0, 136, 136, 0.95); border: 1px solid #00ffcc; border-radius: 8px; color: #ffffff; padding: 0 16px; font-family: monospace; font-size: 12px; font-weight: bold; cursor: pointer; flex-shrink: 0; box-shadow: 0 0 8px rgba(0, 255, 204, 0.35);">Send</button>
-                </div>
-            `;
-            // Append to body or main container safely
-            document.body.appendChild(box);
-        }
-    }
-});
-</script>
+    
 
 
 <style>
@@ -1655,124 +1193,13 @@ window.addEventListener('DOMContentLoaded', () => {
 }
 </style>
 
-<script>
-/* Ultimate Mobile Injector */
-window.addEventListener('DOMContentLoaded', () => {
-    if (window.innerWidth <= 768) {
-        if (!document.getElementById('ultimate-mobile-glass-card')) {
-            const card = document.createElement('div');
-            card.id = 'ultimate-mobile-glass-card';
-            card.innerHTML = `
-                <div style="text-align: center; color: #00ffcc; font-family: monospace; font-size: 11px; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px; line-height: 1.3;">
-                    LISTENING...<br>
-                    <span style="font-weight: normal; opacity: 0.85; font-size: 90%;">(Continuous Stream Active)</span>
-                </div>
-                <div class="u-input-row">
-                    <div class="u-input-wrapper">
-                        <input type="text" placeholder="Tap or speak command...">
-                        <svg style="width: 16px; height: 16px; fill: #00ffcc; flex-shrink: 0; margin-left: 6px; cursor: pointer;" viewBox="0 0 24 24">
-                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-                        </svg>
-                    </div>
-                    <button class="u-send-btn">Send</button>
-                </div>
-            `;
-            document.body.appendChild(card);
-        }
-    }
-});
-</script>
 
 
-<script>
-window.addEventListener('DOMContentLoaded', () => {
-    // Check if it is a Mobile Screen. IF DESKTOP, DO ABSOLUTELY NOTHING.
-    if (window.innerWidth <= 768) {
-        
-        // 1. Hide the old clutter specifically on mobile
-        document.querySelectorAll('form, .input-container, input[type="text"]').forEach(el => {
-            el.style.display = 'none';
-        });
-
-        // 2. Create the Unbreakable Glassmorphism Box
-        const proBox = document.createElement('div');
-        proBox.id = 'pro-mobile-matrix-box';
-        
-        // Hardcoded styling to prevent any CSS leakage or override
-        proBox.style.cssText = 'position: relative; z-index: 999999; display: flex; flex-direction: column; background: rgba(0, 15, 20, 0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid #00ffcc; border-radius: 14px; padding: 14px; margin: 15px auto; width: calc(100% - 20px); max-width: 450px; box-sizing: border-box; box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);';
-
-        proBox.innerHTML = `
-            <div style="text-align: center; color: #00ffcc; font-family: monospace; font-size: 11px; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px; line-height: 1.3;">
-                LISTENING...<br>
-                <span style="font-weight: normal; opacity: 0.85; font-size: 90%;">(Continuous Stream Active)</span>
-            </div>
-            
-            <!-- UNBREAKABLE FLEX ROW -->
-            <div style="display: flex; flex-direction: row; flex-wrap: nowrap; gap: 8px; align-items: center; width: 100%; box-sizing: border-box;">
-                
-                <!-- INPUT WRAPPER (Shrinks dynamically but never pushes the button) -->
-                <div style="flex: 1 1 auto; min-width: 0; height: 42px; background: rgba(0, 5, 10, 0.9); border: 1px solid rgba(0, 255, 204, 0.6); border-radius: 9px; display: flex; align-items: center; padding: 0 10px; box-sizing: border-box;">
-                    <input type="text" placeholder="Tap or speak command..." style="flex: 1 1 auto; min-width: 0; width: 100%; background: transparent; border: none; color: #00ffcc; font-family: monospace; font-size: 12px; outline: none; box-sizing: border-box;">
-                    
-                    <svg style="flex: 0 0 16px; width: 16px; height: 16px; fill: #00ffcc; margin-left: 6px; cursor: pointer;" viewBox="0 0 24 24">
-                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-                    </svg>
-                </div>
-                
-                <!-- SEND BUTTON (Locked width, will never wrap) -->
-                <button style="flex: 0 0 auto; height: 42px; background: rgba(0, 136, 136, 0.95); border: 1px solid #00ffcc; border-radius: 9px; color: #ffffff; padding: 0 16px; font-family: monospace; font-size: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 0 8px rgba(0, 255, 204, 0.35); box-sizing: border-box; white-space: nowrap;">Send</button>
-            
-            </div>
-        `;
-        
-        document.body.appendChild(proBox);
-    }
-});
-</script>
 
 
-<script>
-window.addEventListener('DOMContentLoaded', () => {
-    if (window.innerWidth <= 768) {
-        // Remove old if exists
-        const oldBox = document.getElementById('pro-mobile-matrix-box');
-        if (oldBox) oldBox.remove();
 
-        // Hide old cluttered inputs
-        document.querySelectorAll('form, .input-container').forEach(el => {
-            el.style.display = 'none';
-        });
 
-        const proBox = document.createElement('div');
-        proBox.id = 'pro-mobile-matrix-box';
-        proBox.style.cssText = 'position: relative; z-index: 999999; display: flex; flex-direction: column; background: rgba(0, 15, 20, 0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid #00ffcc; border-radius: 14px; padding: 14px; margin: 15px auto; width: calc(100% - 20px); max-width: 450px; box-sizing: border-box; box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);';
 
-        proBox.innerHTML = `
-            <div style="text-align: center; color: #00ffcc; font-family: monospace; font-size: 11px; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px; line-height: 1.3;">
-                LISTENING...<br>
-                <span style="font-weight: normal; opacity: 0.85; font-size: 90%;">(Continuous Stream Active)</span>
-            </div>
-            
-            <div style="display: flex; flex-direction: row; flex-wrap: nowrap; gap: 8px; align-items: center; width: 100%; box-sizing: border-box;">
-                
-                <!-- Explicit Input Box with Visible Field and Mic Icon -->
-                <div style="flex: 1 1 auto; min-width: 0; height: 42px; background: rgba(0, 5, 10, 0.95); border: 1px solid rgba(0, 255, 204, 0.7); border-radius: 9px; display: flex; align-items: center; padding: 0 10px; box-sizing: border-box;">
-                    <input type="text" placeholder="Tap or speak command..." style="flex: 1 1 auto; min-width: 0; width: 100%; background: transparent; border: none; color: #00ffcc; font-family: monospace; font-size: 12px; outline: none; box-sizing: border-box; display: block !important; visibility: visible !important;">
-                    
-                    <svg style="flex: 0 0 16px; width: 16px; height: 16px; fill: #00ffcc; margin-left: 6px; cursor: pointer; display: block !important;" viewBox="0 0 24 24">
-                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-                    </svg>
-                </div>
-                
-                <button style="flex: 0 0 auto; height: 42px; background: rgba(0, 136, 136, 0.95); border: 1px solid #00ffcc; border-radius: 9px; color: #ffffff; padding: 0 16px; font-family: monospace; font-size: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 0 8px rgba(0, 255, 204, 0.35); box-sizing: border-box; white-space: nowrap;">Send</button>
-            
-            </div>
-        `;
-        
-        document.body.appendChild(proBox);
-    }
-});
-</script>
 
 
 <style>
@@ -1793,27 +1220,53 @@ window.addEventListener('DOMContentLoaded', () => {
 }
 </style>
 
-<script>
-window.addEventListener('DOMContentLoaded', () => {
-    if (window.innerWidth <= 768) {
-        // Find existing input elements on mobile and enhance them gracefully without breaking functionality
-        setTimeout(() => {
-            const inputs = document.querySelectorAll('input[type="text"]');
-            inputs.forEach(inp => {
-                if (!inp.dataset.enhanced) {
-                    inp.dataset.enhanced = "true";
-                    inp.style.background = "transparent";
-                    inp.style.border = "none";
-                    inp.style.color = "#00ffcc";
-                    inp.style.fontFamily = "monospace";
-                    inp.style.outline = "none";
-                    inp.placeholder = "Tap or speak command...";
-                }
-            });
-        }, 500);
+
+
+
+<style>
+@media screen and (max-width: 768px) {
+    /* Hide messy default inputs on mobile */
+    form, .input-container {
+        display: none !important;
     }
-});
-</script>
+
+    /* Exact Mockup Glassmorphism Box for Mobile */
+    #exact-mobile-glass-box {
+        display: flex !important;
+        flex-direction: column !important;
+        background: rgba(0, 15, 20, 0.85) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        border: 1px solid rgba(0, 255, 204, 0.75) !important;
+        border-radius: 14px !important;
+        padding: 14px !important;
+        margin: 15px auto !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        box-shadow: 0 0 20px rgba(0, 255, 204, 0.25) !important;
+    }
+}
+/* Hidden by default on Desktop */
+#exact-mobile-glass-box {
+    display: none;
+}
+</style>
+
+<div id="exact-mobile-glass-box">
+    <div style="font-family: monospace; font-size: 11px; color: #00ffcc; text-align: center; margin-bottom: 10px; font-weight: bold; line-height: 1.3;">
+        LISTENING...<br>
+        <span style="font-size: 90%; font-weight: normal; opacity: 0.85;">(Continuous Stream Active)</span>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center; width: 100%; box-sizing: border-box;">
+        <div style="flex: 1; height: 42px; background: rgba(0, 5, 10, 0.9); border: 1px solid rgba(0, 255, 204, 0.6); border-radius: 9px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box;">
+            <input type="text" placeholder="Tap or speak command..." style="width: 100%; background: transparent; border: none; color: #00ffcc; font-family: monospace; font-size: 12px; outline: none;">
+            <svg style="width: 18px; height: 18px; fill: #00ffcc; flex-shrink: 0; margin-left: 8px; cursor: pointer;" viewBox="0 0 24 24">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+            </svg>
+        </div>
+        <button style="height: 42px; background: rgba(0, 136, 136, 0.95); border: 1px solid #00ffcc; border-radius: 9px; color: #ffffff; padding: 0 18px; font-family: monospace; font-size: 13px; font-weight: bold; cursor: pointer; flex-shrink: 0; box-shadow: 0 0 10px rgba(0, 255, 204, 0.35);">Send</button>
+    </div>
+</div>
 
 </body>
 </html>"""
