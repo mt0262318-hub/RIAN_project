@@ -165,12 +165,24 @@
 }
 </style>
 
+
+<style>
+@media screen and (max-width: 768px) {
+    html, body {
+    }
+    #scaled-desktop-view {
+    }
+}
+</style>
+
 </head>
 
 
 
 
 <body>
+<div id="scaled-desktop-view">
+
     <div id="canvas-container"></div>
     <div class="hud-layer">
         <div class="hud-card interactive">
@@ -438,5 +450,7 @@
             } catch (e) {}
         });
     </script>
+
+</div><!-- /scaled-desktop-view -->
 </body>
 </html>
