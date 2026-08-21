@@ -1,6 +1,7 @@
 import os
 import asyncio
 import edge_tts
+import requests
 from pptx import Presentation
 from pypdf import PdfReader
 
@@ -35,22 +36,17 @@ class NotebookEngine:
         return path
 
     async def generate_audio_overview(self, text, filename="audio_overview.mp3"):
-        voice = "en-US-AriaNeural" # Natural sounding voice
+        voice = "en-US-AriaNeural"
         communicate = edge_tts.Communicate(text, voice)
         path = os.path.join(self.output_dir, filename)
         await communicate.save(path)
         return path
 
-print("NotebookEngine initialized successfully!")
-
-import requests
-
 def sync_to_telegram(file_path, caption="R.I.A.N. Notebook Asset"):
-    # Telegram Bot token aur chat id tumhare vault configuration se load honi chahiye
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
-        print("Telegram credentials not found in environment. Skipping cloud sync.")
+        print("Telegram credentials missing. Skipping cloud sync.")
         return False
     
     url = f"https://api.telegram.org/bot{token}/sendDocument"
@@ -61,9 +57,10 @@ def sync_to_telegram(file_path, caption="R.I.A.N. Notebook Asset"):
     
     if response.status_code == 200:
         print(f"Successfully synced {file_path} to Telegram vault!")
-        # Local cleanup to ensure zero server load/storage waste
-        os.remove(file_path)
+        os.remove(file_path) # Delete local copy to keep zero server load
         return True
     else:
         print(f"Failed to sync: {response.text}")
         return False
+
+print("NotebookEngine loaded successfully!")
