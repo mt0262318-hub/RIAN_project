@@ -42,3 +42,28 @@ class NotebookEngine:
         return path
 
 print("NotebookEngine initialized successfully!")
+
+import requests
+
+def sync_to_telegram(file_path, caption="R.I.A.N. Notebook Asset"):
+    # Telegram Bot token aur chat id tumhare vault configuration se load honi chahiye
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        print("Telegram credentials not found in environment. Skipping cloud sync.")
+        return False
+    
+    url = f"https://api.telegram.org/bot{token}/sendDocument"
+    with open(file_path, "rb") as f:
+        files = {"document": f}
+        data = {"chat_id": chat_id, "caption": caption}
+        response = requests.post(url, data=data, files=files)
+    
+    if response.status_code == 200:
+        print(f"Successfully synced {file_path} to Telegram vault!")
+        # Local cleanup to ensure zero server load/storage waste
+        os.remove(file_path)
+        return True
+    else:
+        print(f"Failed to sync: {response.text}")
+        return False
