@@ -26,10 +26,8 @@ class VisualSafetyPipeline:
         return screenshot_path
 
     def send_approval_request_to_telegram(self, image_path, description="New UI Proposal"):
-        token = os.getenv("TELEGRAM_BOT_TOKEN")
-        chat_id = os.getenv("TELEGRAM_CHAT_ID")
-        if not token or not chat_id:
-            return False
+        token = os.getenv("TELEGRAM_BOT_TOKEN") or "7507914035:AAHQv7F6w..." # Yahan apna bot token hai
+        chat_id = os.getenv("TELEGRAM_CHAT_ID") or "YOUR_CHAT_ID"
 
         url = f"https://api.telegram.org/bot{token}/sendPhoto"
         with open(image_path, "rb") as img:
