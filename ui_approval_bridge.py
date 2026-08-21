@@ -1,4 +1,5 @@
 import os
+import asyncio
 from safety_visual_pipeline import VisualSafetyPipeline
 
 class RianUIBridge:
@@ -16,6 +17,6 @@ class RianUIBridge:
 
 if __name__ == '__main__':
     bridge = RianUIBridge()
-    # Dummy Test: Isko hum UI generation event se hook karenge
-    import asyncio
-    asyncio.run(bridge.propose_ui_update("<html><body style='background:black; color:white;'><h1>R.I.A.N. UI Preview Ready</h1></body></html>", "Initial Dashboard Dark Mode Layout"))
+    sample_html = "<html><body style='background:black; color:white; font-family:sans-serif; padding:20px;'><h1>R.I.A.N. UI Preview Ready</h1><p>Status: Sandbox Secure & Zero-Risk</p></body></html>"
+    asyncio.run(bridge.propose_ui_update(sample_html, "Initial Dashboard Dark Mode Layout"))
+    print("UI Approval Bridge Test Executed Successfully!")
