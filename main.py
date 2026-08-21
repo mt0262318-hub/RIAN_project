@@ -451,650 +451,9 @@ async def serve_master_ui():
     
     <title>J.I.V.A. / R.I.A.N. Neural Interface</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; user-select: none; }
-        body { background: #000308; color: #00e5ff; overflow: hidden; height: 100vh; width: 100vw; position: relative; }
-        #canvas3d { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-
-        .hud-glass {
-            background: rgba(3, 15, 29, 0.75);
-            border: 1px solid rgba(0, 229, 255, 0.45);
-            box-shadow: 0 0 25px rgba(0, 229, 255, 0.2), inset 0 0 15px rgba(0, 229, 255, 0.1);
-            border-radius: 8px;
-            backdrop-filter: blur(14px);
-            position: absolute;
-            z-index: 10;
-        }
-        .memory-badge {
-            background: rgba(45, 0, 75, 0.65);
-            border: 1px solid #bd00ff;
-            color: #e29aff;
-            border-radius: 6px;
-            padding: 6px 12px;
-            font-size: 11px;
-            font-weight: bold;
-            box-shadow: 0 0 16px rgba(189, 0, 255, 0.5);
-            position: absolute;
-            z-index: 10;
-            letter-spacing: 1px;
-        }
-
-        .desktop-status { top: 25px; left: 30px; width: 280px; padding: 18px; }
-        .desktop-status h3 { font-size: 16px; letter-spacing: 3px; margin-bottom: 8px; text-shadow: 0 0 10px #00e5ff; }
-        .desktop-status p { font-size: 11px; line-height: 1.7; color: #9feeff; }
-
-        .desktop-logs { top: 40px; right: 30px; width: 340px; padding: 18px; }
-        .desktop-logs h4 { font-size: 14px; letter-spacing: 2px; margin-bottom: 8px; }
-        .log-stream { font-size: 11px; color: #7ce8ff; max-height: 160px; overflow-y: auto; line-height: 1.6; }
-        .log-stream::-webkit-scrollbar { width: 4px; }
-        .log-stream::-webkit-scrollbar-thumb { background: #00e5ff; border-radius: 2px; }
-
-        .dt-node-1 { top: 40px; right: 390px; }
-        .dt-node-2 { top: 120px; right: 380px; }
-        .dt-node-3 { bottom: 180px; left: 40px; }
-        .dt-node-4 { bottom: 110px; left: 60px; }
-        .dt-node-5 { bottom: 130px; right: 90px; }
-        .dt-node-6 { bottom: 65px; right: 110px; }
-
-        .desktop-bottom-bar {
-            bottom: 25px; left: 50%; transform: translateX(-50%);
-            width: 640px; padding: 14px 22px; text-align: center;
-            z-index: 20;
-        }
-
-        .mobile-layout {
-            display: none;
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            flex-direction: column; justify-content: space-between;
-            align-items: center; padding: 45px 20px 25px; z-index: 10;
-        }
-        .mobile-header-text { font-size: 13px; letter-spacing: 3px; font-weight: bold; color: #00e5ff; text-shadow: 0 0 12px #00e5ff; text-align: center; }
-        .mobile-footer { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 15px; }
-        .mobile-speak-label { font-size: 14px; letter-spacing: 4px; color: #00e5ff; text-shadow: 0 0 12px #00e5ff; font-weight: bold; }
-
-        .status-headline { font-size: 12px; font-weight: bold; letter-spacing: 3px; margin-bottom: 10px; text-shadow: 0 0 10px #00e5ff; }
-        .input-row { display: flex; gap: 10px; width: 100%; }
-        .hud-input {
-            flex: 1; background: rgba(0, 18, 32, 0.85); border: 1px solid #00e5ff;
-            color: #00e5ff; padding: 10px 14px; border-radius: 6px; outline: none; font-size: 13px;
-            box-shadow: inset 0 0 8px rgba(0, 229, 255, 0.2);
-        }
-        .hud-btn {
-            background: rgba(0, 229, 255, 0.25); border: 1px solid #00e5ff; color: #00e5ff;
-            padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold;
-            transition: 0.2s;
-        }
-        .hud-btn:hover { background: #00e5ff; color: #000; box-shadow: 0 0 15px #00e5ff; }
-
-        @media (max-width: 1023px) {
-            .desktop-layout { display: none !important; }
-            .mobile-layout { display: flex !important; }
-        }
-    </style>
-
-
-<style>
-@media screen and (max-width: 768px) {
-    body {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: flex-start !important;
-        min-height: 100vh !important;
-        padding: 10px !important;
-        overflow-y: auto !important;
-        background: #000 !important;
-    }
-    div, section, header, footer {
-        position: relative !important;
-        top: auto !important;
-        left: auto !important;
-        right: auto !important;
-        bottom: auto !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        margin: 6px 0 !important;
-        transform: none !important;
-    }
-    canvas {
-        width: 100% !important;
-        height: 280px !important;
-        display: block !important;
-        margin: 10px auto !important;
-    }
-}
-</style>
-
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<style>
-@media screen and (max-width: 768px) {
-    /* Mobile Container Flow */
-    body {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: flex-start !important;
-        min-height: 100vh !important;
-        padding: 10px !important;
-        overflow-y: auto !important;
-        background: #000 !important;
-        box-sizing: border-box !important;
-    }
     
-    /* Reset all absolute/fixed positioning for mobile stacking */
-    div, section, header, footer {
-        position: relative !important;
-        top: auto !important;
-        left: auto !important;
-        right: auto !important;
-        bottom: auto !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        margin: 6px 0 !important;
-        transform: none !important;
-    }
-
-    /* FIX FOR LOG BOX: Internal scroll instead of expanding and pushing up */
-    pre, code, .log-box, .terminal-box, [class*="log"], [class*="test"], [class*="runner"] {
-        max-height: 180px !important;
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
-        word-break: break-all !important;
-        white-space: pre-wrap !important;
-    }
-
-    /* 3D Canvas Sizing for Phone */
-    canvas {
-        width: 100% !important;
-        height: 250px !important;
-        display: block !important;
-        margin: 10px auto !important;
-    }
-
-    /* Input Box fixed nicely at lower section */
-    input, textarea, button, .input-container {
-        width: 100% !important;
-        box-sizing: border-box !important;
-    }
-}
-</style>
 
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<style>
-@media screen and (max-width: 768px) {
-    /* Enable Flex container on body for mobile re-ordering */
-    body {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: flex-start !important;
-        min-height: 100vh !important;
-        padding: 10px !important;
-        overflow-x: hidden !important;
-        background: #000 !important;
-        box-sizing: border-box !important;
-    }
-
-    /* Reset default absolute positioning for mobile stack */
-    body > *, div, section, header, footer {
-        position: relative !important;
-        top: auto !important;
-        left: auto !important;
-        right: auto !important;
-        bottom: auto !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        margin: 6px 0 !important;
-        transform: none !important;
-    }
-
-    /* SPECIFIC ORDER FOR MOBILE (Matching Reference Image) */
-    /* 1. Header / Title at top */
-    header, .header, h1, .title {
-        order: 1 !important;
-        text-align: center !important;
-    }
-
-    /* 2. Input / Command Box right below header */
-    .input-container, form, input[type="text"], textarea, button, .chat-box {
-        order: 2 !important;
-    }
-
-    /* 3. 3D Sphere Canvas in middle */
-    canvas {
-        order: 3 !important;
-        width: 100% !important;
-        height: 240px !important;
-        display: block !important;
-        margin: 10px auto !important;
-    }
-
-    /* 4. Autonomous Testing Log Box at bottom with FIXED height and custom scrollbar ("dandi") */
-    pre, code, .log-box, .terminal-box, [class*="log"], [class*="test"], [class*="runner"], div:has(> pre) {
-        order: 4 !important;
-        height: 200px !important;
-        max-height: 200px !important;
-        overflow-y: scroll !important;
-        overflow-x: hidden !important;
-        word-break: break-all !important;
-        white-space: pre-wrap !important;
-        border: 1px solid #00ffcc !important;
-        background: rgba(0, 20, 20, 0.8) !important;
-    }
-
-    /* Custom glowing scrollbar (sidebar 'dandi') for log container */
-    ::-webkit-scrollbar {
-        width: 6px !important;
-        display: block !important;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #00ffcc !important;
-        border-radius: 3px !important;
-    }
-    ::-webkit-scrollbar-track {
-        background: #001111 !important;
-    }
-}
-</style>
-
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<style>
-@media screen and (max-width: 768px) {
-    /* Mobile Screen Container */
-    body {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: flex-start !important;
-        min-height: 100vh !important;
-        padding: 8px !important;
-        overflow-x: hidden !important;
-        background: #000 !important;
-        box-sizing: border-box !important;
-    }
-
-    /* Reset positioning */
-    body > *, div, section, header, footer {
-        position: relative !important;
-        top: auto !important;
-        left: auto !important;
-        right: auto !important;
-        bottom: auto !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        margin: 4px 0 !important;
-        transform: none !important;
-    }
-
-    /* --- EXACT ORDER MATCHING 3RD IMAGE --- */
-    
-    /* 1. Status & Log boxes at the TOP */
-    header, .header, h1, .title, 
-    [class*="status"], [class*="system"], 
-    [class*="log"], [class*="test"], [class*="runner"], pre, code {
-        order: 1 !important;
-    }
-
-    /* Specific Log Box Height & Scrollbar ('dandi') */
-    pre, code, .log-box, .terminal-box, [class*="log"], [class*="runner"] {
-        max-height: 160px !important;
-        overflow-y: scroll !important;
-        overflow-x: hidden !important;
-        border: 1px solid #00ffcc !important;
-        background: rgba(0, 15, 15, 0.9) !important;
-    }
-
-    /* 2. 3D Particle Sphere Canvas in the CENTER */
-    canvas {
-        order: 2 !important;
-        width: 100% !important;
-        height: 220px !important;
-        display: block !important;
-        margin: 8px auto !important;
-    }
-
-    /* 3. Input, Speak & Send Box at the BOTTOM */
-    .input-container, form, input[type="text"], textarea, button, [class*="input"], [class*="send"], [class*="mic"] {
-        order: 3 !important;
-    }
-
-    /* Custom glowing scrollbar */
-    ::-webkit-scrollbar {
-        width: 5px !important;
-        display: block !important;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #00ffcc !important;
-        border-radius: 3px !important;
-    }
-}
-</style>
-
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<style>
-/* STRICT PRO MOBILE SCOPE - GUARANTEES ZERO IMPACT ON DESKTOP */
-@media screen and (max-width: 768px) {
-    /* Base mobile body setup */
-    body {
-        background: #000 !important;
-        margin: 0 !important;
-        padding: 8px !important;
-        box-sizing: border-box !important;
-        overflow-x: hidden !important;
-    }
-
-    /* Force mobile container to stack vertically in exact target order */
-    body, html {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-    }
-
-    /* Target specific components safely without global leaks */
-    canvas {
-        order: 2 !important;
-        width: 100% !important;
-        height: 240px !important;
-        display: block !important;
-        margin: 10px auto !important;
-    }
-
-    /* Log and status panels at top */
-    [class*="log"], [class*="test"], [class*="runner"], pre, code, [class*="status"] {
-        order: 1 !important;
-        max-height: 170px !important;
-        overflow-y: scroll !important;
-        overflow-x: hidden !important;
-        border: 1px solid #00ffcc !important;
-        background: rgba(0, 15, 15, 0.95) !important;
-        box-sizing: border-box !important;
-    }
-
-    /* Input and send controls at bottom */
-    .input-container, form, input[type="text"], textarea, button, [class*="input"], [class*="send"] {
-        order: 3 !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-        margin-top: 10px !important;
-    }
-
-    /* Custom glowing scrollbar ("dandi") */
-    ::-webkit-scrollbar {
-        width: 5px !important;
-        display: block !important;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #00ffcc !important;
-        border-radius: 3px !important;
-    }
-    ::-webkit-scrollbar-track {
-        background: #001111 !important;
-    }
-}
-</style>
-
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<style>
-/* PRECISION MOBILE SCOPE - ZERO DESKTOP IMPACT */
-@media screen and (max-width: 768px) {
-    /* Mobile Body Setup */
-    body {
-        background: #000 !important;
-        margin: 0 !important;
-        padding: 8px !important;
-        box-sizing: border-box !important;
-        overflow-x: hidden !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-    }
-
-    /* Target specific components using exact inspection names */
-    
-    /* 1. Status & Logs at the TOP */
-    .desktop-layout, .hud-glass, .log-stream, [class*="desktop-logs"] {
-        order: 1 !important;
-        width: 100% !important;
-        max-height: 180px !important;
-        overflow-y: scroll !important;
-        overflow-x: hidden !important;
-        position: relative !important;
-        margin: 4px 0 !important;
-    }
-
-    /* 2. 3D Sphere Canvas in the EXACT CENTER */
-    #canvas3d {
-        order: 2 !important;
-        width: 100% !important;
-        height: 240px !important;
-        display: block !important;
-        margin: 10px auto !important;
-        position: relative !important;
-    }
-
-    /* 3. Input & Send controls at the BOTTOM */
-    form, input, textarea, button, .input-container {
-        order: 3 !important;
-        width: 100% !important;
-        position: relative !important;
-        margin-top: 8px !important;
-        box-sizing: border-box !important;
-    }
-
-    /* Glowing Sidebar Scrollbar ("dandi") */
-    ::-webkit-scrollbar {
-        width: 5px !important;
-        display: block !important;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #00ffcc !important;
-        border-radius: 3px !important;
-    }
-}
-</style>
-
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<style>
-/* EXACT MOCKUP SCOPE - ZERO DESKTOP IMPACT */
-@media screen and (max-width: 768px) {
-    body {
-        background: #000 !important;
-        margin: 0 !important;
-        padding: 10px !important;
-        box-sizing: border-box !important;
-        overflow-x: hidden !important;
-        display: flex !important;
-        flex-direction: column !important;
-    }
-
-    /* 1. Status / Log Box at Top */
-    .desktop-layout, .hud-glass, .log-stream, [class*="desktop-logs"] {
-        order: 1 !important;
-        width: 100% !important;
-        max-height: 200px !important;
-        overflow-y: scroll !important;
-        overflow-x: hidden !important;
-        margin-bottom: 15px !important;
-        box-sizing: border-box !important;
-    }
-
-    /* 2. 3D Sphere in Center */
-    #canvas3d {
-        order: 2 !important;
-        width: 100% !important;
-        height: 260px !important;
-        display: block !important;
-        margin: 15px auto !important;
-    }
-
-    /* 3. Input & Send Box at Bottom */
-    form, input, textarea, button, .input-container {
-        order: 3 !important;
-        width: 100% !important;
-        margin-top: 15px !important;
-        box-sizing: border-box !important;
-    }
-
-    /* Glowing Sidebar Scrollbar ("dandi") */
-    ::-webkit-scrollbar {
-        width: 5px !important;
-        display: block !important;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #00ffcc !important;
-        border-radius: 3px !important;
-    }
-}
-</style>
-
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<style>
-/* DESKTOP STYLES UNTOUCHED */
-@media screen and (max-width: 768px) {
-    /* Hide messy desktop absolute elements on mobile */
-    body > *:not(#mobile-exact-app) {
-        display: none !important;
-    }
-    
-    body {
-        background: #000 !important;
-        color: #00ffcc !important;
-        font-family: monospace !important;
-        margin: 0 !important;
-        padding: 12px !important;
-        box-sizing: border-box !important;
-        overflow-y: auto !important;
-    }
-
-    #mobile-exact-app {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 14px !important;
-        width: 100% !important;
-        max-width: 480px !important;
-        margin: 0 auto !important;
-    }
-
-    .m-box {
-        background: rgba(0, 20, 25, 0.85) !important;
-        border: 1px solid #00ffcc !important;
-        border-radius: 10px !important;
-        padding: 12px !important;
-        box-shadow: 0 0 15px rgba(0, 255, 204, 0.2) !important;
-    }
-
-    .m-logs {
-        max-height: 190px !important;
-        overflow-y: scroll !important;
-        font-size: 11px !important;
-        line-height: 1.4 !important;
-    }
-
-    .m-canvas-container {
-        width: 100% !important;
-        height: 240px !important;
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-        background: rgba(0, 5, 10, 0.5) !important;
-        border-radius: 10px !important;
-        border: 1px solid #00ffcc44 !important;
-    }
-
-    .m-canvas-container canvas {
-        width: 100% !important;
-        height: 100% !important;
-        display: block !important;
-    }
-
-    .m-input-area {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 10px !important;
-    }
-
-    .m-input-row {
-        display: flex !important;
-        gap: 8px !important;
-        align-items: center !important;
-    }
-
-    .m-input-row input {
-        flex: 1 !important;
-        background: rgba(0, 10, 15, 0.9) !important;
-        border: 1px solid #00ffcc !important;
-        border-radius: 6px !important;
-        color: #00ffcc !important;
-        padding: 10px !important;
-        font-family: monospace !important;
-    }
-
-    .m-input-row button {
-        background: #008888 !important;
-        border: 1px solid #00ffcc !important;
-        border-radius: 6px !important;
-        color: #fff !important;
-        padding: 10px 16px !important;
-        font-weight: bold !important;
-        cursor: pointer !important;
-    }
-
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 5px !important; }
-    ::-webkit-scrollbar-thumb { background: #00ffcc !important; border-radius: 3px !important; }
-}
-</style>
-
-<script>
-window.addEventListener('DOMContentLoaded', () => {
-    if (window.innerWidth <= 768) {
-        // Create exact mockup app structure
-        if (!document.getElementById('mobile-exact-app')) {
-            const app = document.createElement('div');
-            app.id = 'mobile-exact-app';
-
-            // 1. Top Section: Status & Logs
-            const topBox = document.createElement('div');
-            topBox.className = 'm-box m-logs';
-            const originalLogs = document.querySelector('.desktop-layout') || document.querySelector('.hud-glass') || document.querySelector('pre');
-            topBox.innerHTML = '<strong>SYSTEM STATUS: ONLINE</strong><br><br>' + (originalLogs ? originalLogs.innerHTML : 'Loading telemetry logs...');
-            app.appendChild(topBox);
-
-            // 2. Center Section: 3D Sphere Canvas
-            const canvasContainer = document.createElement('div');
-            canvasContainer.className = 'm-canvas-container';
-            const canvas = document.getElementById('canvas3d') || document.querySelector('canvas');
-            if (canvas) {
-                canvasContainer.appendChild(canvas);
-            }
-            app.appendChild(canvasContainer);
-
-            // 3. Bottom Section: Listening & Input Box
-            const bottomBox = document.createElement('div');
-            bottomBox.className = 'm-box m-input-area';
-            bottomBox.innerHTML = `
-                <div style="font-size: 12px; color: #00ffcc; text-align: center; margin-bottom: 4px; font-weight: bold;">
-                    LISTENING...<br><span style="font-size: 10px; color: #88ffcc;">(Continuous Stream Active)</span>
-                </div>
-                <div class="m-input-row">
-                    <input type="text" placeholder="Tap or speak command..." id="m-cmd-input">
-                    <button id="m-send-btn">Send</button>
-                </div>
-            `;
-            app.appendChild(bottomBox);
-
-            document.body.appendChild(app);
-        }
-    }
-});
-</script>
 
 </head>
 <body onclick="engageContinuousVoice()">
@@ -1380,95 +739,160 @@ window.addEventListener('DOMContentLoaded', () => {
 
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 @media screen and (max-width: 768px) {
-    /* 100% Transparent Glassmorphism Container matching Reference Image */
-    #mobile-exact-app .m-input-area {
-        background: rgba(0, 10, 15, 0.45) !important;
-        backdrop-filter: blur(6px) !important;
-        -webkit-backdrop-filter: blur(6px) !important;
-        border: 1px solid rgba(0, 255, 204, 0.6) !important;
-        border-radius: 14px !important;
-        padding: 14px !important;
-        box-shadow: 0 0 20px rgba(0, 255, 204, 0.15) inset, 0 0 10px rgba(0, 255, 204, 0.2) !important;
+    body {
+        background: #000 !important;
+        margin: 0 !important;
+        padding: 10px !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
     }
 
-    /* Status text styling */
-    #mobile-exact-app .m-input-area > div:first-child {
+    /* Strict Mobile App Container to prevent any overlap */
+    #strict-mobile-shell {
+        width: 100% !important;
+        max-width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Bottom Listening & Input Panel matching Reference Image 101% */
+    .strict-bottom-card {
+        background: rgba(0, 15, 20, 0.75) !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        border: 1px solid rgba(0, 255, 204, 0.7) !important;
+        border-radius: 14px !important;
+        padding: 12px 14px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        box-shadow: 0 0 15px rgba(0, 255, 204, 0.15) !important;
+    }
+
+    .strict-listening-text {
         font-family: monospace !important;
         font-size: 11px !important;
         color: #00ffcc !important;
         text-align: center !important;
-        margin-bottom: 8px !important;
+        line-height: 1.3 !important;
+        font-weight: bold !important;
         letter-spacing: 0.5px !important;
-        text-shadow: 0 0 5px rgba(0,255,204,0.5) !important;
     }
 
-    .m-input-row {
+    .strict-input-row {
         display: flex !important;
-        gap: 10px !important;
+        gap: 8px !important;
         align-items: center !important;
         width: 100% !important;
+        box-sizing: border-box !important;
     }
 
-    /* Input wrapper matching mockup glass border */
-    .m-input-field-wrapper {
+    .strict-input-box {
         flex: 1 !important;
-        position: relative !important;
+        height: 40px !important;
+        background: rgba(0, 5, 10, 0.8) !important;
+        border: 1px solid rgba(0, 255, 204, 0.6) !important;
+        border-radius: 8px !important;
         display: flex !important;
         align-items: center !important;
-        background: rgba(0, 5, 8, 0.6) !important;
-        border: 1px solid rgba(0, 255, 204, 0.7) !important;
-        border-radius: 10px !important;
-        padding: 0 12px !important;
-        height: 42px !important;
+        padding: 0 10px !important;
+        box-sizing: border-box !important;
     }
 
-    .m-input-field-wrapper input {
+    .strict-input-box input {
         width: 100% !important;
         background: transparent !important;
         border: none !important;
         color: #00ffcc !important;
-        padding: 0 !important;
         font-family: monospace !important;
         font-size: 12px !important;
         outline: none !important;
     }
 
-    .m-input-field-wrapper input::placeholder {
-        color: rgba(0, 255, 204, 0.45) !important;
+    .strict-input-box input::placeholder {
+        color: rgba(0, 255, 204, 0.4) !important;
     }
 
-    /* Mic icon inside wrapper */
-    .m-mic-icon {
-        width: 18px !important;
-        height: 18px !important;
+    .strict-mic-icon {
+        width: 16px !important;
+        height: 16px !important;
         fill: #00ffcc !important;
-        cursor: pointer !important;
         flex-shrink: 0 !important;
-        margin-left: 8px !important;
-        filter: drop-shadow(0 0 3px rgba(0,255,204,0.6)) !important;
+        margin-left: 6px !important;
+        cursor: pointer !important;
     }
 
-    /* Send button matching mockup cyan rounded look */
-    .m-input-row button {
-        background: rgba(0, 136, 136, 0.85) !important;
+    .strict-send-btn {
+        height: 40px !important;
+        background: rgba(0, 136, 136, 0.9) !important;
         border: 1px solid #00ffcc !important;
-        border-radius: 10px !important;
+        border-radius: 8px !important;
         color: #ffffff !important;
-        padding: 0 18px !important;
-        height: 42px !important;
-        font-weight: bold !important;
+        padding: 0 16px !important;
         font-family: monospace !important;
-        font-size: 13px !important;
-        letter-spacing: 0.5px !important;
+        font-size: 12px !important;
+        font-weight: bold !important;
         cursor: pointer !important;
         flex-shrink: 0 !important;
-        box-shadow: 0 0 10px rgba(0, 255, 204, 0.3) !important;
-        text-shadow: 0 0 3px rgba(0,255,204,0.5) !important;
+        box-shadow: 0 0 8px rgba(0, 255, 204, 0.3) !important;
     }
 }
 </style>
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+    if (window.innerWidth <= 768) {
+        // Create strict non-overlapping wrapper if not exists
+        if (!document.getElementById('strict-mobile-shell')) {
+            const shell = document.createElement('div');
+            shell.id = 'strict-mobile-shell';
+
+            // Find existing components
+            const canvas = document.getElementById('canvas3d') || document.querySelector('canvas');
+            const logs = document.querySelector('.desktop-layout') || document.querySelector('.hud-glass');
+
+            if (canvas && logs && canvas.parentElement) {
+                const parent = canvas.parentElement;
+                
+                // Build exact bottom card matching target mockup
+                const bottomCard = document.createElement('div');
+                bottomCard.className = 'strict-bottom-card';
+                bottomCard.innerHTML = `
+                    <div class="strict-listening-text">
+                        LISTENING...<br>
+                        <span style="font-size: 95%; font-weight: normal; opacity: 0.85;">(Continuous Stream Active)<br>Active)</span>
+                    </div>
+                    <div class="strict-input-row">
+                        <div class="strict-input-box">
+                            <input type="text" placeholder="Tap or speak command...">
+                            <svg class="strict-mic-icon" viewBox="0 0 24 24">
+                                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                            </svg>
+                        </div>
+                        <button class="strict-send-btn">Send</button>
+                    </div>
+                `;
+
+                // Append cleanly without overlapping
+                parent.appendChild(bottomCard);
+            }
+        }
+    }
+});
+</script>
 
 </body>
 </html>"""
