@@ -2012,5 +2012,3 @@ if __name__ == "__main__":
         import uvicorn
 
         uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=True)
-# Injected Modern Glass Input Bar
-components.html(modern_input_html, height=80)
