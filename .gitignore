@@ -20,3 +20,4 @@ build/
 *.sql.gz
 *.sql
 *.gz
+.aider*
