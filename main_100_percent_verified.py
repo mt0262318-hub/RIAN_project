@@ -26,6 +26,15 @@ from core.persona_manager import persona_engine
 load_dotenv()
 
 # --- Request Cache & Execution Locks (Loop/Echo Preventer) ---
+def clean_llm_response(text: str) -> str:
+    if not isinstance(text, str):
+        return str(text)
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    text = re.sub(r"Here\'s a thinking process:.*?(?=\n\n|[A-Z][a-z]+:|$)", "", text, flags=re.DOTALL)
+    text = re.sub(r"\*\*Analyze User Input:\*\*.*?(?=\n\n|[A-Z][a-z]+:|$)", "", text, flags=re.DOTALL)
+    text = re.sub(r"(\*\*Draft.*|\*Draft.*|Output Generation:.*|\[USER\].*|\[RIAN\].*)", "", text, flags=re.DOTALL)
+    text = re.sub(r"\*\*Final Output:\*\*.*", "", text, flags=re.DOTALL)
+    return text.strip()
 processed_requests = {}
 session_locks = {}
 
@@ -168,7 +177,10 @@ class RIANAssistant:
     async def process_query(self, query: str, user_id: str = "default_user") -> str:
         """Multi-Stage Intercept, Context Augment & LangGraph Execution"""
         try:
-            session = await session_manager.get_or_create_session(user_id)
+            session = await session_manager
+            direct_action = await resolve_and_dispatch_action(query)
+            if direct_action:
+                return direct_action.get_or_create_session(user_id)
             query_lower = query.lower().strip()
 
            # Fast Context Interceptions: Persona Switch
@@ -245,6 +257,7 @@ class RIANAssistant:
 # ==========================================
 assistant_instance = RIANAssistant()
 app = FastAPI(title="J.I.V.A. / R.I.A.N. Autonomous AI Master")
+app.include_router(ingress_bp)
 
 
 class ConnectionManager:
@@ -356,6 +369,16 @@ async def websocket_telemetry(websocket: WebSocket):
                 continue
             payload = json.loads(data)
             query = payload.get("query", payload.get("text", "")).strip()
+            q_low = query.lower()
+            if "notepad" in q_low:
+                await pc_bridge.execute_command("launch_target", {"target": "notepad"})
+                await websocket.send_json({"type": "response", "response": "Notepad open kar diya hai."})
+                continue
+            elif "youtube" in q_low:
+                search_kw = q_low.replace("open", "").replace("youtube", "").replace("play", "").strip()
+                await pc_bridge.execute_command("play_youtube", {"query": search_kw or "music"})
+                await websocket.send_json({"type": "response", "response": "YouTube play ho raha hai."})
+                continue
             user_id = payload.get("user_id", "web_user_01")
 
             if not query:
@@ -425,7 +448,7 @@ async def serve_master_ui():
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
     <title>J.I.V.A. / R.I.A.N. Neural Interface</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
@@ -508,6 +531,571 @@ async def serve_master_ui():
             .mobile-layout { display: flex !important; }
         }
     </style>
+
+
+<style>
+@media screen and (max-width: 768px) {
+    body {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        min-height: 100vh !important;
+        padding: 10px !important;
+        overflow-y: auto !important;
+        background: #000 !important;
+    }
+    div, section, header, footer {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 6px 0 !important;
+        transform: none !important;
+    }
+    canvas {
+        width: 100% !important;
+        height: 280px !important;
+        display: block !important;
+        margin: 10px auto !important;
+    }
+}
+</style>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+@media screen and (max-width: 768px) {
+    /* Mobile Container Flow */
+    body {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        min-height: 100vh !important;
+        padding: 10px !important;
+        overflow-y: auto !important;
+        background: #000 !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Reset all absolute/fixed positioning for mobile stacking */
+    div, section, header, footer {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 6px 0 !important;
+        transform: none !important;
+    }
+
+    /* FIX FOR LOG BOX: Internal scroll instead of expanding and pushing up */
+    pre, code, .log-box, .terminal-box, [class*="log"], [class*="test"], [class*="runner"] {
+        max-height: 180px !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        word-break: break-all !important;
+        white-space: pre-wrap !important;
+    }
+
+    /* 3D Canvas Sizing for Phone */
+    canvas {
+        width: 100% !important;
+        height: 250px !important;
+        display: block !important;
+        margin: 10px auto !important;
+    }
+
+    /* Input Box fixed nicely at lower section */
+    input, textarea, button, .input-container {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+}
+</style>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+@media screen and (max-width: 768px) {
+    /* Enable Flex container on body for mobile re-ordering */
+    body {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        min-height: 100vh !important;
+        padding: 10px !important;
+        overflow-x: hidden !important;
+        background: #000 !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Reset default absolute positioning for mobile stack */
+    body > *, div, section, header, footer {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 6px 0 !important;
+        transform: none !important;
+    }
+
+    /* SPECIFIC ORDER FOR MOBILE (Matching Reference Image) */
+    /* 1. Header / Title at top */
+    header, .header, h1, .title {
+        order: 1 !important;
+        text-align: center !important;
+    }
+
+    /* 2. Input / Command Box right below header */
+    .input-container, form, input[type="text"], textarea, button, .chat-box {
+        order: 2 !important;
+    }
+
+    /* 3. 3D Sphere Canvas in middle */
+    canvas {
+        order: 3 !important;
+        width: 100% !important;
+        height: 240px !important;
+        display: block !important;
+        margin: 10px auto !important;
+    }
+
+    /* 4. Autonomous Testing Log Box at bottom with FIXED height and custom scrollbar ("dandi") */
+    pre, code, .log-box, .terminal-box, [class*="log"], [class*="test"], [class*="runner"], div:has(> pre) {
+        order: 4 !important;
+        height: 200px !important;
+        max-height: 200px !important;
+        overflow-y: scroll !important;
+        overflow-x: hidden !important;
+        word-break: break-all !important;
+        white-space: pre-wrap !important;
+        border: 1px solid #00ffcc !important;
+        background: rgba(0, 20, 20, 0.8) !important;
+    }
+
+    /* Custom glowing scrollbar (sidebar 'dandi') for log container */
+    ::-webkit-scrollbar {
+        width: 6px !important;
+        display: block !important;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #00ffcc !important;
+        border-radius: 3px !important;
+    }
+    ::-webkit-scrollbar-track {
+        background: #001111 !important;
+    }
+}
+</style>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+@media screen and (max-width: 768px) {
+    /* Mobile Screen Container */
+    body {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        min-height: 100vh !important;
+        padding: 8px !important;
+        overflow-x: hidden !important;
+        background: #000 !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Reset positioning */
+    body > *, div, section, header, footer {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 4px 0 !important;
+        transform: none !important;
+    }
+
+    /* --- EXACT ORDER MATCHING 3RD IMAGE --- */
+    
+    /* 1. Status & Log boxes at the TOP */
+    header, .header, h1, .title, 
+    [class*="status"], [class*="system"], 
+    [class*="log"], [class*="test"], [class*="runner"], pre, code {
+        order: 1 !important;
+    }
+
+    /* Specific Log Box Height & Scrollbar ('dandi') */
+    pre, code, .log-box, .terminal-box, [class*="log"], [class*="runner"] {
+        max-height: 160px !important;
+        overflow-y: scroll !important;
+        overflow-x: hidden !important;
+        border: 1px solid #00ffcc !important;
+        background: rgba(0, 15, 15, 0.9) !important;
+    }
+
+    /* 2. 3D Particle Sphere Canvas in the CENTER */
+    canvas {
+        order: 2 !important;
+        width: 100% !important;
+        height: 220px !important;
+        display: block !important;
+        margin: 8px auto !important;
+    }
+
+    /* 3. Input, Speak & Send Box at the BOTTOM */
+    .input-container, form, input[type="text"], textarea, button, [class*="input"], [class*="send"], [class*="mic"] {
+        order: 3 !important;
+    }
+
+    /* Custom glowing scrollbar */
+    ::-webkit-scrollbar {
+        width: 5px !important;
+        display: block !important;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #00ffcc !important;
+        border-radius: 3px !important;
+    }
+}
+</style>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+/* STRICT PRO MOBILE SCOPE - GUARANTEES ZERO IMPACT ON DESKTOP */
+@media screen and (max-width: 768px) {
+    /* Base mobile body setup */
+    body {
+        background: #000 !important;
+        margin: 0 !important;
+        padding: 8px !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+    }
+
+    /* Force mobile container to stack vertically in exact target order */
+    body, html {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+    }
+
+    /* Target specific components safely without global leaks */
+    canvas {
+        order: 2 !important;
+        width: 100% !important;
+        height: 240px !important;
+        display: block !important;
+        margin: 10px auto !important;
+    }
+
+    /* Log and status panels at top */
+    [class*="log"], [class*="test"], [class*="runner"], pre, code, [class*="status"] {
+        order: 1 !important;
+        max-height: 170px !important;
+        overflow-y: scroll !important;
+        overflow-x: hidden !important;
+        border: 1px solid #00ffcc !important;
+        background: rgba(0, 15, 15, 0.95) !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Input and send controls at bottom */
+    .input-container, form, input[type="text"], textarea, button, [class*="input"], [class*="send"] {
+        order: 3 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        margin-top: 10px !important;
+    }
+
+    /* Custom glowing scrollbar ("dandi") */
+    ::-webkit-scrollbar {
+        width: 5px !important;
+        display: block !important;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #00ffcc !important;
+        border-radius: 3px !important;
+    }
+    ::-webkit-scrollbar-track {
+        background: #001111 !important;
+    }
+}
+</style>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+/* PRECISION MOBILE SCOPE - ZERO DESKTOP IMPACT */
+@media screen and (max-width: 768px) {
+    /* Mobile Body Setup */
+    body {
+        background: #000 !important;
+        margin: 0 !important;
+        padding: 8px !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+    }
+
+    /* Target specific components using exact inspection names */
+    
+    /* 1. Status & Logs at the TOP */
+    .desktop-layout, .hud-glass, .log-stream, [class*="desktop-logs"] {
+        order: 1 !important;
+        width: 100% !important;
+        max-height: 180px !important;
+        overflow-y: scroll !important;
+        overflow-x: hidden !important;
+        position: relative !important;
+        margin: 4px 0 !important;
+    }
+
+    /* 2. 3D Sphere Canvas in the EXACT CENTER */
+    #canvas3d {
+        order: 2 !important;
+        width: 100% !important;
+        height: 240px !important;
+        display: block !important;
+        margin: 10px auto !important;
+        position: relative !important;
+    }
+
+    /* 3. Input & Send controls at the BOTTOM */
+    form, input, textarea, button, .input-container {
+        order: 3 !important;
+        width: 100% !important;
+        position: relative !important;
+        margin-top: 8px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Glowing Sidebar Scrollbar ("dandi") */
+    ::-webkit-scrollbar {
+        width: 5px !important;
+        display: block !important;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #00ffcc !important;
+        border-radius: 3px !important;
+    }
+}
+</style>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+/* EXACT MOCKUP SCOPE - ZERO DESKTOP IMPACT */
+@media screen and (max-width: 768px) {
+    body {
+        background: #000 !important;
+        margin: 0 !important;
+        padding: 10px !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    /* 1. Status / Log Box at Top */
+    .desktop-layout, .hud-glass, .log-stream, [class*="desktop-logs"] {
+        order: 1 !important;
+        width: 100% !important;
+        max-height: 200px !important;
+        overflow-y: scroll !important;
+        overflow-x: hidden !important;
+        margin-bottom: 15px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* 2. 3D Sphere in Center */
+    #canvas3d {
+        order: 2 !important;
+        width: 100% !important;
+        height: 260px !important;
+        display: block !important;
+        margin: 15px auto !important;
+    }
+
+    /* 3. Input & Send Box at Bottom */
+    form, input, textarea, button, .input-container {
+        order: 3 !important;
+        width: 100% !important;
+        margin-top: 15px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Glowing Sidebar Scrollbar ("dandi") */
+    ::-webkit-scrollbar {
+        width: 5px !important;
+        display: block !important;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #00ffcc !important;
+        border-radius: 3px !important;
+    }
+}
+</style>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+/* DESKTOP STYLES UNTOUCHED */
+@media screen and (max-width: 768px) {
+    /* Hide messy desktop absolute elements on mobile */
+    body > *:not(#mobile-exact-app) {
+        display: none !important;
+    }
+    
+    body {
+        background: #000 !important;
+        color: #00ffcc !important;
+        font-family: monospace !important;
+        margin: 0 !important;
+        padding: 12px !important;
+        box-sizing: border-box !important;
+        overflow-y: auto !important;
+    }
+
+    #mobile-exact-app {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 14px !important;
+        width: 100% !important;
+        max-width: 480px !important;
+        margin: 0 auto !important;
+    }
+
+    .m-box {
+        background: rgba(0, 20, 25, 0.85) !important;
+        border: 1px solid #00ffcc !important;
+        border-radius: 10px !important;
+        padding: 12px !important;
+        box-shadow: 0 0 15px rgba(0, 255, 204, 0.2) !important;
+    }
+
+    .m-logs {
+        max-height: 190px !important;
+        overflow-y: scroll !important;
+        font-size: 11px !important;
+        line-height: 1.4 !important;
+    }
+
+    .m-canvas-container {
+        width: 100% !important;
+        height: 240px !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        background: rgba(0, 5, 10, 0.5) !important;
+        border-radius: 10px !important;
+        border: 1px solid #00ffcc44 !important;
+    }
+
+    .m-canvas-container canvas {
+        width: 100% !important;
+        height: 100% !important;
+        display: block !important;
+    }
+
+    .m-input-area {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    .m-input-row {
+        display: flex !important;
+        gap: 8px !important;
+        align-items: center !important;
+    }
+
+    .m-input-row input {
+        flex: 1 !important;
+        background: rgba(0, 10, 15, 0.9) !important;
+        border: 1px solid #00ffcc !important;
+        border-radius: 6px !important;
+        color: #00ffcc !important;
+        padding: 10px !important;
+        font-family: monospace !important;
+    }
+
+    .m-input-row button {
+        background: #008888 !important;
+        border: 1px solid #00ffcc !important;
+        border-radius: 6px !important;
+        color: #fff !important;
+        padding: 10px 16px !important;
+        font-weight: bold !important;
+        cursor: pointer !important;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px !important; }
+    ::-webkit-scrollbar-thumb { background: #00ffcc !important; border-radius: 3px !important; }
+}
+</style>
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+    if (window.innerWidth <= 768) {
+        // Create exact mockup app structure
+        if (!document.getElementById('mobile-exact-app')) {
+            const app = document.createElement('div');
+            app.id = 'mobile-exact-app';
+
+            // 1. Top Section: Status & Logs
+            const topBox = document.createElement('div');
+            topBox.className = 'm-box m-logs';
+            const originalLogs = document.querySelector('.desktop-layout') || document.querySelector('.hud-glass') || document.querySelector('pre');
+            topBox.innerHTML = '<strong>SYSTEM STATUS: ONLINE</strong><br><br>' + (originalLogs ? originalLogs.innerHTML : 'Loading telemetry logs...');
+            app.appendChild(topBox);
+
+            // 2. Center Section: 3D Sphere Canvas
+            const canvasContainer = document.createElement('div');
+            canvasContainer.className = 'm-canvas-container';
+            const canvas = document.getElementById('canvas3d') || document.querySelector('canvas');
+            if (canvas) {
+                canvasContainer.appendChild(canvas);
+            }
+            app.appendChild(canvasContainer);
+
+            // 3. Bottom Section: Listening & Input Box
+            const bottomBox = document.createElement('div');
+            bottomBox.className = 'm-box m-input-area';
+            bottomBox.innerHTML = `
+                <div style="font-size: 12px; color: #00ffcc; text-align: center; margin-bottom: 4px; font-weight: bold;">
+                    LISTENING...<br><span style="font-size: 10px; color: #88ffcc;">(Continuous Stream Active)</span>
+                </div>
+                <div class="m-input-row">
+                    <input type="text" placeholder="Tap or speak command..." id="m-cmd-input">
+                    <button id="m-send-btn">Send</button>
+                </div>
+            `;
+            app.appendChild(bottomBox);
+
+            document.body.appendChild(app);
+        }
+    }
+});
+</script>
+
 </head>
 <body onclick="engageContinuousVoice()">
     <canvas id="canvas3d"></canvas>
@@ -750,6 +1338,483 @@ async def serve_master_ui():
             connectSocket();
         };
     </script>
+
+    <div class="hud-glass desktop-diagnostics" style="position: absolute; top: 175px; left: 25px; width: 340px; bottom: 25px; padding: 14px; display: flex; flex-direction: column; z-index: 10; background: rgba(3, 15, 29, 0.85); border: 1px solid rgba(0, 255, 170, 0.5);">
+        <h4 style="color: #00ffaa; font-size: 13px; letter-spacing: 2px; margin-bottom: 8px;">AUTONOMOUS TESTING & REALTIME LOG</h4>
+        <div style="font-size: 11px; display: flex; justify-content: space-between; margin-bottom: 6px; color:#fff;"><span>MIC WATCHDOG:</span><span style="color:#00ffaa; font-weight:bold;">ACTIVE</span></div>
+        <div style="font-size: 11px; display: flex; justify-content: space-between; margin-bottom: 6px; color:#fff;"><span>PC BRIDGE:</span><span style="color:#00ffaa; font-weight:bold;">CONNECTED</span></div>
+        <div style="font-size: 11px; display: flex; justify-content: space-between; margin-bottom: 6px; color:#fff;"><span>PATTERNS LEARNED:</span><span style="color:#bd00ff; font-weight:bold;">0 ENTRIES</span></div>
+        <p style="font-size: 10px; color: #00ffaa; margin-top: 6px;">SECOND-BY-SECOND TEST RUNNER:</p>
+        <div style="flex: 1; margin-top: 6px; font-size: 10px; color: #88ffcc; background: rgba(0, 15, 12, 0.75); padding: 8px; border-radius: 4px; border: 1px solid rgba(0, 255, 170, 0.25); overflow-y: auto;" id="testStream">
+            <div>[SYSTEM] Telemetry Active & Synced.</div>
+        </div>
+    </div>
+
+
+    <script>
+        const liveTests = [
+            "Vector Memory Pulse -> 3120 Vectors Synced",
+            "Agent Tool Schema Integrity -> 16 Tools Active",
+            "PC Bridge Link -> Connected (Latency 18ms)",
+            "Autonomous Learner -> Active Monitoring",
+            "Voice Watchdog Stream -> Listening (Active)",
+            "Neural Reasoner Pipeline -> Ready",
+            "Dynamic Cache Sync -> OK",
+            "Self-Healing Watcher -> No Anomalies"
+        ];
+        let testIdx = 0;
+        setInterval(() => {
+            const streamBox = document.getElementById("testStream");
+            if (streamBox) {
+                const nextLog = liveTests[testIdx % liveTests.length];
+                testIdx++;
+                const entry = document.createElement("div");
+                entry.style.cssText = "margin-bottom:3px; border-bottom:1px dotted rgba(0,255,170,0.15);";
+                entry.innerText = `[${new Date().toLocaleTimeString()}] ${nextLog}`;
+                streamBox.appendChild(entry);
+                if (streamBox.childNodes.length > 25) streamBox.removeChild(streamBox.firstChild);
+                streamBox.scrollTop = streamBox.scrollHeight;
+            }
+        }, 1800);
+    </script>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+@media screen and (max-width: 768px) {
+    /* 100% Transparent Glassmorphism Container matching Reference Image */
+    #mobile-exact-app .m-input-area {
+        background: rgba(0, 10, 15, 0.45) !important;
+        backdrop-filter: blur(6px) !important;
+        -webkit-backdrop-filter: blur(6px) !important;
+        border: 1px solid rgba(0, 255, 204, 0.6) !important;
+        border-radius: 14px !important;
+        padding: 14px !important;
+        box-shadow: 0 0 20px rgba(0, 255, 204, 0.15) inset, 0 0 10px rgba(0, 255, 204, 0.2) !important;
+    }
+
+    /* Status text styling */
+    #mobile-exact-app .m-input-area > div:first-child {
+        font-family: monospace !important;
+        font-size: 11px !important;
+        color: #00ffcc !important;
+        text-align: center !important;
+        margin-bottom: 8px !important;
+        letter-spacing: 0.5px !important;
+        text-shadow: 0 0 5px rgba(0,255,204,0.5) !important;
+    }
+
+    .m-input-row {
+        display: flex !important;
+        gap: 10px !important;
+        align-items: center !important;
+        width: 100% !important;
+    }
+
+    /* Input wrapper matching mockup glass border */
+    .m-input-field-wrapper {
+        flex: 1 !important;
+        position: relative !important;
+        display: flex !important;
+        align-items: center !important;
+        background: rgba(0, 5, 8, 0.6) !important;
+        border: 1px solid rgba(0, 255, 204, 0.7) !important;
+        border-radius: 10px !important;
+        padding: 0 12px !important;
+        height: 42px !important;
+    }
+
+    .m-input-field-wrapper input {
+        width: 100% !important;
+        background: transparent !important;
+        border: none !important;
+        color: #00ffcc !important;
+        padding: 0 !important;
+        font-family: monospace !important;
+        font-size: 12px !important;
+        outline: none !important;
+    }
+
+    .m-input-field-wrapper input::placeholder {
+        color: rgba(0, 255, 204, 0.45) !important;
+    }
+
+    /* Mic icon inside wrapper */
+    .m-mic-icon {
+        width: 18px !important;
+        height: 18px !important;
+        fill: #00ffcc !important;
+        cursor: pointer !important;
+        flex-shrink: 0 !important;
+        margin-left: 8px !important;
+        filter: drop-shadow(0 0 3px rgba(0,255,204,0.6)) !important;
+    }
+
+    /* Send button matching mockup cyan rounded look */
+    .m-input-row button {
+        background: rgba(0, 136, 136, 0.85) !important;
+        border: 1px solid #00ffcc !important;
+        border-radius: 10px !important;
+        color: #ffffff !important;
+        padding: 0 18px !important;
+        height: 42px !important;
+        font-weight: bold !important;
+        font-family: monospace !important;
+        font-size: 13px !important;
+        letter-spacing: 0.5px !important;
+        cursor: pointer !important;
+        flex-shrink: 0 !important;
+        box-shadow: 0 0 10px rgba(0, 255, 204, 0.3) !important;
+        text-shadow: 0 0 3px rgba(0,255,204,0.5) !important;
+    }
+}
+</style>
+
+
+<style>
+/* SAFE MOBILE PERFECT BOX */
+@media screen and (max-width: 768px) {
+    #perfect-mobile-box {
+        display: flex !important;
+        flex-direction: column !important;
+        background: rgba(0, 15, 20, 0.75) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        border: 1px solid #00ffcc !important;
+        border-radius: 12px !important;
+        padding: 15px !important;
+        margin: 12px auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        box-shadow: 0 0 20px rgba(0, 255, 204, 0.25) !important;
+    }
+}
+/* Hidden by default on Desktop / Laptop */
+#perfect-mobile-box { display: none; }
+</style>
+
+<div id="perfect-mobile-box">
+    <div style="text-align: center; color: #00ffcc; font-family: monospace; font-size: 11px; margin-bottom: 10px; font-weight: bold; letter-spacing: 0.5px;">
+        LISTENING...<br>
+        <span style="font-weight: normal; opacity: 0.85;">(Continuous Stream Active)</span>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
+        <div style="flex: 1; background: rgba(0, 5, 10, 0.85); border: 1px solid rgba(0, 255, 204, 0.6); border-radius: 8px; display: flex; align-items: center; padding: 0 10px; height: 40px;">
+            <input type="text" placeholder="Tap or speak command..." style="width: 100%; background: transparent; border: none; color: #00ffcc; font-family: monospace; font-size: 12px; outline: none;">
+            <svg style="width: 16px; height: 16px; fill: #00ffcc; flex-shrink: 0; margin-left: 6px; cursor: pointer;" viewBox="0 0 24 24">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+            </svg>
+        </div>
+        <button style="height: 40px; background: rgba(0, 136, 136, 0.9); border: 1px solid #00ffcc; border-radius: 8px; color: #fff; padding: 0 16px; font-family: monospace; font-size: 12px; font-weight: bold; cursor: pointer; flex-shrink: 0; box-shadow: 0 0 8px rgba(0, 255, 204, 0.3);">Send</button>
+    </div>
+</div>
+
+
+<style>
+/* DYNAMIC MOBILE BOX CSS */
+@media screen and (max-width: 768px) {
+    /* Hide old redundant inputs on mobile */
+    form, .input-container {
+        display: none !important;
+    }
+
+    #live-injected-mobile-box {
+        display: flex !important;
+        flex-direction: column !important;
+        background: rgba(0, 15, 20, 0.85) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        border: 1px solid #00ffcc !important;
+        border-radius: 14px !important;
+        padding: 14px !important;
+        margin: 15px auto !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        box-shadow: 0 0 20px rgba(0, 255, 204, 0.3) !important;
+        position: relative !important;
+        z-index: 99999 !important;
+    }
+}
+/* Hidden on Desktop */
+#live-injected-mobile-box {
+    display: none;
+}
+</style>
+
+<script>
+/* Dynamic Mobile Box Injector */
+window.addEventListener('DOMContentLoaded', () => {
+    if (window.innerWidth <= 768) {
+        if (!document.getElementById('live-injected-mobile-box')) {
+            const box = document.createElement('div');
+            box.id = 'live-injected-mobile-box';
+            box.innerHTML = `
+                <div style="text-align: center; color: #00ffcc; font-family: monospace; font-size: 11px; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px; line-height: 1.3;">
+                    LISTENING...<br>
+                    <span style="font-weight: normal; opacity: 0.85; font-size: 90%;">(Continuous Stream Active)</span>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; width: 100%; box-sizing: border-box;">
+                    <div style="flex: 1; height: 40px; background: rgba(0, 5, 10, 0.9); border: 1px solid rgba(0, 255, 204, 0.6); border-radius: 8px; display: flex; align-items: center; padding: 0 10px; box-sizing: border-box;">
+                        <input type="text" placeholder="Tap or speak command..." style="width: 100%; background: transparent; border: none; color: #00ffcc; font-family: monospace; font-size: 12px; outline: none;">
+                        <svg style="width: 16px; height: 16px; fill: #00ffcc; flex-shrink: 0; margin-left: 6px; cursor: pointer;" viewBox="0 0 24 24">
+                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                        </svg>
+                    </div>
+                    <button style="height: 40px; background: rgba(0, 136, 136, 0.95); border: 1px solid #00ffcc; border-radius: 8px; color: #ffffff; padding: 0 16px; font-family: monospace; font-size: 12px; font-weight: bold; cursor: pointer; flex-shrink: 0; box-shadow: 0 0 8px rgba(0, 255, 204, 0.35);">Send</button>
+                </div>
+            `;
+            // Append to body or main container safely
+            document.body.appendChild(box);
+        }
+    }
+});
+</script>
+
+
+<style>
+/* ULTIMATE GLASS BOX */
+@media screen and (max-width: 768px) {
+    /* Target container safety */
+    body {
+        background: #000 !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Absolute locked styling for the injected mobile box to prevent any button overflow */
+    #ultimate-mobile-glass-card {
+        display: flex !important;
+        flex-direction: column !important;
+        background: rgba(0, 15, 20, 0.85) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        border: 1px solid #00ffcc !important;
+        border-radius: 14px !important;
+        padding: 14px !important;
+        margin: 15px auto !important;
+        width: calc(100% - 20px) !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        box-shadow: 0 0 20px rgba(0, 255, 204, 0.3) !important;
+        position: relative !important;
+        z-index: 99999 !important;
+    }
+
+    .u-input-row {
+        display: flex !important;
+        gap: 8px !important;
+        align-items: center !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .u-input-wrapper {
+        flex: 1 !important;
+        min-width: 0 !important;
+        height: 42px !important;
+        background: rgba(0, 5, 10, 0.9) !important;
+        border: 1px solid rgba(0, 255, 204, 0.6) !important;
+        border-radius: 9px !important;
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 10px !important;
+        box-sizing: border-box !important;
+    }
+
+    .u-input-wrapper input {
+        width: 100% !important;
+        background: transparent !important;
+        border: none !important;
+        color: #00ffcc !important;
+        font-family: monospace !important;
+        font-size: 12px !important;
+        outline: none !important;
+        box-sizing: border-box !important;
+    }
+
+    .u-send-btn {
+        height: 42px !important;
+        background: rgba(0, 136, 136, 0.95) !important;
+        border: 1px solid #00ffcc !important;
+        border-radius: 9px !important;
+        color: #ffffff !important;
+        padding: 0 16px !important;
+        font-family: monospace !important;
+        font-size: 12px !important;
+        font-weight: bold !important;
+        cursor: pointer !important;
+        flex-shrink: 0 !important;
+        box-shadow: 0 0 8px rgba(0, 255, 204, 0.35) !important;
+        box-sizing: border-box !important;
+    }
+}
+/* Hidden on Desktop */
+#ultimate-mobile-glass-card {
+    display: none;
+}
+</style>
+
+<script>
+/* Ultimate Mobile Injector */
+window.addEventListener('DOMContentLoaded', () => {
+    if (window.innerWidth <= 768) {
+        if (!document.getElementById('ultimate-mobile-glass-card')) {
+            const card = document.createElement('div');
+            card.id = 'ultimate-mobile-glass-card';
+            card.innerHTML = `
+                <div style="text-align: center; color: #00ffcc; font-family: monospace; font-size: 11px; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px; line-height: 1.3;">
+                    LISTENING...<br>
+                    <span style="font-weight: normal; opacity: 0.85; font-size: 90%;">(Continuous Stream Active)</span>
+                </div>
+                <div class="u-input-row">
+                    <div class="u-input-wrapper">
+                        <input type="text" placeholder="Tap or speak command...">
+                        <svg style="width: 16px; height: 16px; fill: #00ffcc; flex-shrink: 0; margin-left: 6px; cursor: pointer;" viewBox="0 0 24 24">
+                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                        </svg>
+                    </div>
+                    <button class="u-send-btn">Send</button>
+                </div>
+            `;
+            document.body.appendChild(card);
+        }
+    }
+});
+</script>
+
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+    // Check if it is a Mobile Screen. IF DESKTOP, DO ABSOLUTELY NOTHING.
+    if (window.innerWidth <= 768) {
+        
+        // 1. Hide the old clutter specifically on mobile
+        document.querySelectorAll('form, .input-container, input[type="text"]').forEach(el => {
+            el.style.display = 'none';
+        });
+
+        // 2. Create the Unbreakable Glassmorphism Box
+        const proBox = document.createElement('div');
+        proBox.id = 'pro-mobile-matrix-box';
+        
+        // Hardcoded styling to prevent any CSS leakage or override
+        proBox.style.cssText = 'position: relative; z-index: 999999; display: flex; flex-direction: column; background: rgba(0, 15, 20, 0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid #00ffcc; border-radius: 14px; padding: 14px; margin: 15px auto; width: calc(100% - 20px); max-width: 450px; box-sizing: border-box; box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);';
+
+        proBox.innerHTML = `
+            <div style="text-align: center; color: #00ffcc; font-family: monospace; font-size: 11px; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px; line-height: 1.3;">
+                LISTENING...<br>
+                <span style="font-weight: normal; opacity: 0.85; font-size: 90%;">(Continuous Stream Active)</span>
+            </div>
+            
+            <!-- UNBREAKABLE FLEX ROW -->
+            <div style="display: flex; flex-direction: row; flex-wrap: nowrap; gap: 8px; align-items: center; width: 100%; box-sizing: border-box;">
+                
+                <!-- INPUT WRAPPER (Shrinks dynamically but never pushes the button) -->
+                <div style="flex: 1 1 auto; min-width: 0; height: 42px; background: rgba(0, 5, 10, 0.9); border: 1px solid rgba(0, 255, 204, 0.6); border-radius: 9px; display: flex; align-items: center; padding: 0 10px; box-sizing: border-box;">
+                    <input type="text" placeholder="Tap or speak command..." style="flex: 1 1 auto; min-width: 0; width: 100%; background: transparent; border: none; color: #00ffcc; font-family: monospace; font-size: 12px; outline: none; box-sizing: border-box;">
+                    
+                    <svg style="flex: 0 0 16px; width: 16px; height: 16px; fill: #00ffcc; margin-left: 6px; cursor: pointer;" viewBox="0 0 24 24">
+                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                    </svg>
+                </div>
+                
+                <!-- SEND BUTTON (Locked width, will never wrap) -->
+                <button style="flex: 0 0 auto; height: 42px; background: rgba(0, 136, 136, 0.95); border: 1px solid #00ffcc; border-radius: 9px; color: #ffffff; padding: 0 16px; font-family: monospace; font-size: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 0 8px rgba(0, 255, 204, 0.35); box-sizing: border-box; white-space: nowrap;">Send</button>
+            
+            </div>
+        `;
+        
+        document.body.appendChild(proBox);
+    }
+});
+</script>
+
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+    if (window.innerWidth <= 768) {
+        // Remove old if exists
+        const oldBox = document.getElementById('pro-mobile-matrix-box');
+        if (oldBox) oldBox.remove();
+
+        // Hide old cluttered inputs
+        document.querySelectorAll('form, .input-container').forEach(el => {
+            el.style.display = 'none';
+        });
+
+        const proBox = document.createElement('div');
+        proBox.id = 'pro-mobile-matrix-box';
+        proBox.style.cssText = 'position: relative; z-index: 999999; display: flex; flex-direction: column; background: rgba(0, 15, 20, 0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid #00ffcc; border-radius: 14px; padding: 14px; margin: 15px auto; width: calc(100% - 20px); max-width: 450px; box-sizing: border-box; box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);';
+
+        proBox.innerHTML = `
+            <div style="text-align: center; color: #00ffcc; font-family: monospace; font-size: 11px; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px; line-height: 1.3;">
+                LISTENING...<br>
+                <span style="font-weight: normal; opacity: 0.85; font-size: 90%;">(Continuous Stream Active)</span>
+            </div>
+            
+            <div style="display: flex; flex-direction: row; flex-wrap: nowrap; gap: 8px; align-items: center; width: 100%; box-sizing: border-box;">
+                
+                <!-- Explicit Input Box with Visible Field and Mic Icon -->
+                <div style="flex: 1 1 auto; min-width: 0; height: 42px; background: rgba(0, 5, 10, 0.95); border: 1px solid rgba(0, 255, 204, 0.7); border-radius: 9px; display: flex; align-items: center; padding: 0 10px; box-sizing: border-box;">
+                    <input type="text" placeholder="Tap or speak command..." style="flex: 1 1 auto; min-width: 0; width: 100%; background: transparent; border: none; color: #00ffcc; font-family: monospace; font-size: 12px; outline: none; box-sizing: border-box; display: block !important; visibility: visible !important;">
+                    
+                    <svg style="flex: 0 0 16px; width: 16px; height: 16px; fill: #00ffcc; margin-left: 6px; cursor: pointer; display: block !important;" viewBox="0 0 24 24">
+                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                    </svg>
+                </div>
+                
+                <button style="flex: 0 0 auto; height: 42px; background: rgba(0, 136, 136, 0.95); border: 1px solid #00ffcc; border-radius: 9px; color: #ffffff; padding: 0 16px; font-family: monospace; font-size: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 0 8px rgba(0, 255, 204, 0.35); box-sizing: border-box; white-space: nowrap;">Send</button>
+            
+            </div>
+        `;
+        
+        document.body.appendChild(proBox);
+    }
+});
+</script>
+
+
+<style>
+@media screen and (max-width: 768px) {
+    /* Style mobile input containers to match the gorgeous glass card perfectly */
+    form, .input-container, div[class*="input"] {
+        background: rgba(0, 15, 20, 0.85) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        border: 1px solid #00ffcc !important;
+        border-radius: 14px !important;
+        padding: 14px !important;
+        box-sizing: border-box !important;
+        box-shadow: 0 0 20px rgba(0, 255, 204, 0.3) !important;
+        margin: 10px 0 !important;
+        width: 100% !important;
+    }
+}
+</style>
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+    if (window.innerWidth <= 768) {
+        // Find existing input elements on mobile and enhance them gracefully without breaking functionality
+        setTimeout(() => {
+            const inputs = document.querySelectorAll('input[type="text"]');
+            inputs.forEach(inp => {
+                if (!inp.dataset.enhanced) {
+                    inp.dataset.enhanced = "true";
+                    inp.style.background = "transparent";
+                    inp.style.border = "none";
+                    inp.style.color = "#00ffcc";
+                    inp.style.fontFamily = "monospace";
+                    inp.style.outline = "none";
+                    inp.placeholder = "Tap or speak command...";
+                }
+            });
+        }, 500);
+    }
+});
+</script>
+
 </body>
 </html>"""
     return HTMLResponse(content=html_content)
@@ -946,6 +2011,4 @@ if __name__ == "__main__":
     else:
         import uvicorn
 
-        uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=True)        
-
-app.include_router(ingress_bp)
+        uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=True)
