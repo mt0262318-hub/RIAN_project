@@ -1,43 +1,14 @@
-import os
-import time
-import requests
-
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-ALLOWED_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-
-def check_for_approval():
-    if not TELEGRAM_TOKEN:
-        return False
-
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates?offset=-1"
+import os, time, requests
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+while True:
     try:
-        response = requests.get(url, timeout=10)
-        data = response.json()
-        if data.get("ok") and data.get("result"):
-            latest_update = data["result"][-1]
-            message = latest_update.get("message", {})
-            chat_id = str(message.get("chat", {}).get("id"))
-            text = message.get("text", "").strip().upper()
-
-            if chat_id == str(ALLOWED_CHAT_ID):
-                if text == "APPROVE":
-                    print("[SUCCESS] Approval received from Telegram! Deploying code...")
-                    return True
-                elif text == "REJECT":
-                    print("[REJECTED] Discarding UI proposal.")
-                    return "REJECTED"
+        res = requests.get(f"https://api.telegram.org/bot{TOKEN}/getUpdates?offset=-1", timeout=10).json()
+        if res.get("ok") and res.get("result"):
+            msg = res["result"][-1].get("message", {})
+            if str(msg.get("chat", {}).get("id")) == str(CHAT_ID) and msg.get("text", "").strip().upper() == "APPROVE":
+                print("[SUCCESS] Approved via Telegram! Deploying...")
+                break
     except Exception as e:
-        print(f"Error: {e}")
-    return False
-
-if __name__ == "__main__":
-    print("Telegram Listener Active...")
-    while True:
-        status = check_for_approval()
-        if status is True:
-            print("UI Deployed successfully!")
-            break
-        elif status == "REJECTED":
-            print("Proposal discarded.")
-            break
-        time.sleep(5)
+        pass
+    time.sleep(5)
