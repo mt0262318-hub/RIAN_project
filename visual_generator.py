@@ -8,11 +8,9 @@ def trigger_visual_generation(prompt_text):
     os.makedirs(output_dir, exist_ok=True)
     dummy_image_path = os.path.join(output_dir, "generated_render.png")
     
-    # Creating a placeholder render binary for pipeline integration
     with open(dummy_image_path, "wb") as f:
         f.write(b"\x89PNG\r\n\x1a\n...") 
 
-    # Auto-sync to Telegram Vault (Zero Server Load)
     success = sync_file_to_telegram(dummy_image_path, caption=f"R.I.A.N. Render: {prompt_text}")
     return success
 
@@ -30,7 +28,7 @@ def sync_file_to_telegram(file_path, caption):
         response = requests.post(url, data={"chat_id": chat_id, "caption": caption}, files={"document": f})
     
     if response.status_code == 200:
-        os.remove(file_path) # Immediate local storage cleanup
+        os.remove(file_path)
         print("Asset successfully synced to Telegram and local copy wiped!")
         return True
     else:
