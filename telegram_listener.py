@@ -7,7 +7,6 @@ ALLOWED_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 def check_for_approval():
     if not TELEGRAM_TOKEN:
-        print("Telegram Token missing!")
         return False
 
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates?offset=-1"
@@ -20,7 +19,6 @@ def check_for_approval():
             chat_id = str(message.get("chat", {}).get("id"))
             text = message.get("text", "").strip().upper()
 
-            # Verify chat ID for security
             if chat_id == str(ALLOWED_CHAT_ID):
                 if text == "APPROVE":
                     print("[SUCCESS] Approval received from Telegram! Deploying code...")
@@ -29,18 +27,17 @@ def check_for_approval():
                     print("[REJECTED] Discarding UI proposal.")
                     return "REJECTED"
     except Exception as e:
-        print(f"Error checking updates: {e}")
+        print(f"Error: {e}")
     return False
 
 if __name__ == "__main__":
-    print("Telegram Listener Active. Waiting for 'APPROVE' or 'REJECT' response...")
+    print("Telegram Listener Active...")
     while True:
         status = check_for_approval()
         if status is True:
-            # Yahan hum live deployment trigger karenge
-            print("UI Deployed to production successfully!")
+            print("UI Deployed successfully!")
             break
         elif status == "REJECTED":
-            print("Proposal discarded safely.")
+            print("Proposal discarded.")
             break
         time.sleep(5)
