@@ -95,6 +95,32 @@
     }
 }
 </style>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+@media screen and (max-width: 768px) {
+    html, body {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        background: #000;
+        margin: 0;
+        padding: 0;
+    }
+    /* Wrap body contents to scale down desktop layout perfectly to mobile width */
+    body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    /* Scale the main app container to fit phone screen width */
+    .container, #app, canvas {
+        transform: scale(0.38);
+        transform-origin: center center;
+    }
+}
+</style>
+
 </head>
 
 
