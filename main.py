@@ -165,7 +165,8 @@ class RIANAssistant:
 
     async def retrieve_relevant_memory(self, query: str) -> str:
         """Fetch memory embeddings and semantic context"""
-if vector_db:
+        try:
+            if vector_db:
                 matches = await asyncio.to_thread(vector_db.search, query, top_k=2)
                 if matches:
                     return " | ".join([m.get("text", "") for m in matches])
@@ -175,6 +176,7 @@ if vector_db:
 
     async def process_query(self, query: str, user_id: str = "default_user") -> str:
         """Multi-Stage Intercept, Context Augment & LangGraph Execution"""
+        try:
             session = await session_manager
             direct_action = await resolve_and_dispatch_action(query)
             if direct_action:
@@ -198,6 +200,7 @@ if vector_db:
             # Fast Context Interceptions: Name registration
             if "mera naam" in query_lower and ("hai" in query_lower or "rakh" in query_lower):
                 words = query_lower.split()
+                try:
                     idx = words.index("naam")
                     name = words[idx + 1].replace("hai", "").replace("rakho", "").strip(".,!?")
                     session.context["Name"] = name
@@ -273,6 +276,7 @@ class ConnectionManager:
 
     async def broadcast_state(self, message: Dict[str, Any]):
         for connection in self.active_connections:
+            try:
                 await connection.send_json(message)
             except Exception:
                 pass
@@ -306,6 +310,7 @@ class BiometricsRequest(BaseModel):
 
 @app.post("/api/chat")
 async def chat_with_rian(request: ChatRequest):
+    try:
         if 'chat_groq' not in locals() and 'chat_groq' not in globals():
             from langchain_groq import ChatGroq
             chat_groq = ChatGroq(model_name="qwen/qwen3.6-27b", temperature=0.5)
@@ -347,6 +352,7 @@ async def get_system_status():
 @app.websocket("/ws/telemetry")
 async def websocket_telemetry(websocket: WebSocket):
     await manager.connect(websocket)
+    try:
         while True:
             data = await websocket.receive_text()
 
@@ -356,6 +362,7 @@ async def websocket_telemetry(websocket: WebSocket):
                 import tools.pc_tools as pc_tools
                 print(f"[VISION EXECUTING] Capturing screen for: {_user_raw}")
                 vision_out = pc_tools.run_screen_vision(_user_raw)
+                try:
                     await websocket.send_json({"type": "response", "message": vision_out, "status": "completed"})
                 except Exception:
                     pass
@@ -441,7 +448,7 @@ async def serve_master_ui():
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
     <title>J.I.V.A. / R.I.A.N. Neural Interface</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
@@ -524,6 +531,571 @@ async def serve_master_ui():
             .mobile-layout { display: flex !important; }
         }
     </style>
+
+
+<style>
+@media screen and (max-width: 768px) {
+    body {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        min-height: 100vh !important;
+        padding: 10px !important;
+        overflow-y: auto !important;
+        background: #000 !important;
+    }
+    div, section, header, footer {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 6px 0 !important;
+        transform: none !important;
+    }
+    canvas {
+        width: 100% !important;
+        height: 280px !important;
+        display: block !important;
+        margin: 10px auto !important;
+    }
+}
+</style>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+@media screen and (max-width: 768px) {
+    /* Mobile Container Flow */
+    body {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        min-height: 100vh !important;
+        padding: 10px !important;
+        overflow-y: auto !important;
+        background: #000 !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Reset all absolute/fixed positioning for mobile stacking */
+    div, section, header, footer {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 6px 0 !important;
+        transform: none !important;
+    }
+
+    /* FIX FOR LOG BOX: Internal scroll instead of expanding and pushing up */
+    pre, code, .log-box, .terminal-box, [class*="log"], [class*="test"], [class*="runner"] {
+        max-height: 180px !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        word-break: break-all !important;
+        white-space: pre-wrap !important;
+    }
+
+    /* 3D Canvas Sizing for Phone */
+    canvas {
+        width: 100% !important;
+        height: 250px !important;
+        display: block !important;
+        margin: 10px auto !important;
+    }
+
+    /* Input Box fixed nicely at lower section */
+    input, textarea, button, .input-container {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+}
+</style>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+@media screen and (max-width: 768px) {
+    /* Enable Flex container on body for mobile re-ordering */
+    body {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        min-height: 100vh !important;
+        padding: 10px !important;
+        overflow-x: hidden !important;
+        background: #000 !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Reset default absolute positioning for mobile stack */
+    body > *, div, section, header, footer {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 6px 0 !important;
+        transform: none !important;
+    }
+
+    /* SPECIFIC ORDER FOR MOBILE (Matching Reference Image) */
+    /* 1. Header / Title at top */
+    header, .header, h1, .title {
+        order: 1 !important;
+        text-align: center !important;
+    }
+
+    /* 2. Input / Command Box right below header */
+    .input-container, form, input[type="text"], textarea, button, .chat-box {
+        order: 2 !important;
+    }
+
+    /* 3. 3D Sphere Canvas in middle */
+    canvas {
+        order: 3 !important;
+        width: 100% !important;
+        height: 240px !important;
+        display: block !important;
+        margin: 10px auto !important;
+    }
+
+    /* 4. Autonomous Testing Log Box at bottom with FIXED height and custom scrollbar ("dandi") */
+    pre, code, .log-box, .terminal-box, [class*="log"], [class*="test"], [class*="runner"], div:has(> pre) {
+        order: 4 !important;
+        height: 200px !important;
+        max-height: 200px !important;
+        overflow-y: scroll !important;
+        overflow-x: hidden !important;
+        word-break: break-all !important;
+        white-space: pre-wrap !important;
+        border: 1px solid #00ffcc !important;
+        background: rgba(0, 20, 20, 0.8) !important;
+    }
+
+    /* Custom glowing scrollbar (sidebar 'dandi') for log container */
+    ::-webkit-scrollbar {
+        width: 6px !important;
+        display: block !important;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #00ffcc !important;
+        border-radius: 3px !important;
+    }
+    ::-webkit-scrollbar-track {
+        background: #001111 !important;
+    }
+}
+</style>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+@media screen and (max-width: 768px) {
+    /* Mobile Screen Container */
+    body {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        min-height: 100vh !important;
+        padding: 8px !important;
+        overflow-x: hidden !important;
+        background: #000 !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Reset positioning */
+    body > *, div, section, header, footer {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 4px 0 !important;
+        transform: none !important;
+    }
+
+    /* --- EXACT ORDER MATCHING 3RD IMAGE --- */
+    
+    /* 1. Status & Log boxes at the TOP */
+    header, .header, h1, .title, 
+    [class*="status"], [class*="system"], 
+    [class*="log"], [class*="test"], [class*="runner"], pre, code {
+        order: 1 !important;
+    }
+
+    /* Specific Log Box Height & Scrollbar ('dandi') */
+    pre, code, .log-box, .terminal-box, [class*="log"], [class*="runner"] {
+        max-height: 160px !important;
+        overflow-y: scroll !important;
+        overflow-x: hidden !important;
+        border: 1px solid #00ffcc !important;
+        background: rgba(0, 15, 15, 0.9) !important;
+    }
+
+    /* 2. 3D Particle Sphere Canvas in the CENTER */
+    canvas {
+        order: 2 !important;
+        width: 100% !important;
+        height: 220px !important;
+        display: block !important;
+        margin: 8px auto !important;
+    }
+
+    /* 3. Input, Speak & Send Box at the BOTTOM */
+    .input-container, form, input[type="text"], textarea, button, [class*="input"], [class*="send"], [class*="mic"] {
+        order: 3 !important;
+    }
+
+    /* Custom glowing scrollbar */
+    ::-webkit-scrollbar {
+        width: 5px !important;
+        display: block !important;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #00ffcc !important;
+        border-radius: 3px !important;
+    }
+}
+</style>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+/* STRICT PRO MOBILE SCOPE - GUARANTEES ZERO IMPACT ON DESKTOP */
+@media screen and (max-width: 768px) {
+    /* Base mobile body setup */
+    body {
+        background: #000 !important;
+        margin: 0 !important;
+        padding: 8px !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+    }
+
+    /* Force mobile container to stack vertically in exact target order */
+    body, html {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+    }
+
+    /* Target specific components safely without global leaks */
+    canvas {
+        order: 2 !important;
+        width: 100% !important;
+        height: 240px !important;
+        display: block !important;
+        margin: 10px auto !important;
+    }
+
+    /* Log and status panels at top */
+    [class*="log"], [class*="test"], [class*="runner"], pre, code, [class*="status"] {
+        order: 1 !important;
+        max-height: 170px !important;
+        overflow-y: scroll !important;
+        overflow-x: hidden !important;
+        border: 1px solid #00ffcc !important;
+        background: rgba(0, 15, 15, 0.95) !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Input and send controls at bottom */
+    .input-container, form, input[type="text"], textarea, button, [class*="input"], [class*="send"] {
+        order: 3 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        margin-top: 10px !important;
+    }
+
+    /* Custom glowing scrollbar ("dandi") */
+    ::-webkit-scrollbar {
+        width: 5px !important;
+        display: block !important;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #00ffcc !important;
+        border-radius: 3px !important;
+    }
+    ::-webkit-scrollbar-track {
+        background: #001111 !important;
+    }
+}
+</style>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+/* PRECISION MOBILE SCOPE - ZERO DESKTOP IMPACT */
+@media screen and (max-width: 768px) {
+    /* Mobile Body Setup */
+    body {
+        background: #000 !important;
+        margin: 0 !important;
+        padding: 8px !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+    }
+
+    /* Target specific components using exact inspection names */
+    
+    /* 1. Status & Logs at the TOP */
+    .desktop-layout, .hud-glass, .log-stream, [class*="desktop-logs"] {
+        order: 1 !important;
+        width: 100% !important;
+        max-height: 180px !important;
+        overflow-y: scroll !important;
+        overflow-x: hidden !important;
+        position: relative !important;
+        margin: 4px 0 !important;
+    }
+
+    /* 2. 3D Sphere Canvas in the EXACT CENTER */
+    #canvas3d {
+        order: 2 !important;
+        width: 100% !important;
+        height: 240px !important;
+        display: block !important;
+        margin: 10px auto !important;
+        position: relative !important;
+    }
+
+    /* 3. Input & Send controls at the BOTTOM */
+    form, input, textarea, button, .input-container {
+        order: 3 !important;
+        width: 100% !important;
+        position: relative !important;
+        margin-top: 8px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Glowing Sidebar Scrollbar ("dandi") */
+    ::-webkit-scrollbar {
+        width: 5px !important;
+        display: block !important;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #00ffcc !important;
+        border-radius: 3px !important;
+    }
+}
+</style>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+/* EXACT MOCKUP SCOPE - ZERO DESKTOP IMPACT */
+@media screen and (max-width: 768px) {
+    body {
+        background: #000 !important;
+        margin: 0 !important;
+        padding: 10px !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    /* 1. Status / Log Box at Top */
+    .desktop-layout, .hud-glass, .log-stream, [class*="desktop-logs"] {
+        order: 1 !important;
+        width: 100% !important;
+        max-height: 200px !important;
+        overflow-y: scroll !important;
+        overflow-x: hidden !important;
+        margin-bottom: 15px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* 2. 3D Sphere in Center */
+    #canvas3d {
+        order: 2 !important;
+        width: 100% !important;
+        height: 260px !important;
+        display: block !important;
+        margin: 15px auto !important;
+    }
+
+    /* 3. Input & Send Box at Bottom */
+    form, input, textarea, button, .input-container {
+        order: 3 !important;
+        width: 100% !important;
+        margin-top: 15px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Glowing Sidebar Scrollbar ("dandi") */
+    ::-webkit-scrollbar {
+        width: 5px !important;
+        display: block !important;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #00ffcc !important;
+        border-radius: 3px !important;
+    }
+}
+</style>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+/* DESKTOP STYLES UNTOUCHED */
+@media screen and (max-width: 768px) {
+    /* Hide messy desktop absolute elements on mobile */
+    body > *:not(#mobile-exact-app) {
+        display: none !important;
+    }
+    
+    body {
+        background: #000 !important;
+        color: #00ffcc !important;
+        font-family: monospace !important;
+        margin: 0 !important;
+        padding: 12px !important;
+        box-sizing: border-box !important;
+        overflow-y: auto !important;
+    }
+
+    #mobile-exact-app {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 14px !important;
+        width: 100% !important;
+        max-width: 480px !important;
+        margin: 0 auto !important;
+    }
+
+    .m-box {
+        background: rgba(0, 20, 25, 0.85) !important;
+        border: 1px solid #00ffcc !important;
+        border-radius: 10px !important;
+        padding: 12px !important;
+        box-shadow: 0 0 15px rgba(0, 255, 204, 0.2) !important;
+    }
+
+    .m-logs {
+        max-height: 190px !important;
+        overflow-y: scroll !important;
+        font-size: 11px !important;
+        line-height: 1.4 !important;
+    }
+
+    .m-canvas-container {
+        width: 100% !important;
+        height: 240px !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        background: rgba(0, 5, 10, 0.5) !important;
+        border-radius: 10px !important;
+        border: 1px solid #00ffcc44 !important;
+    }
+
+    .m-canvas-container canvas {
+        width: 100% !important;
+        height: 100% !important;
+        display: block !important;
+    }
+
+    .m-input-area {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    .m-input-row {
+        display: flex !important;
+        gap: 8px !important;
+        align-items: center !important;
+    }
+
+    .m-input-row input {
+        flex: 1 !important;
+        background: rgba(0, 10, 15, 0.9) !important;
+        border: 1px solid #00ffcc !important;
+        border-radius: 6px !important;
+        color: #00ffcc !important;
+        padding: 10px !important;
+        font-family: monospace !important;
+    }
+
+    .m-input-row button {
+        background: #008888 !important;
+        border: 1px solid #00ffcc !important;
+        border-radius: 6px !important;
+        color: #fff !important;
+        padding: 10px 16px !important;
+        font-weight: bold !important;
+        cursor: pointer !important;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px !important; }
+    ::-webkit-scrollbar-thumb { background: #00ffcc !important; border-radius: 3px !important; }
+}
+</style>
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+    if (window.innerWidth <= 768) {
+        // Create exact mockup app structure
+        if (!document.getElementById('mobile-exact-app')) {
+            const app = document.createElement('div');
+            app.id = 'mobile-exact-app';
+
+            // 1. Top Section: Status & Logs
+            const topBox = document.createElement('div');
+            topBox.className = 'm-box m-logs';
+            const originalLogs = document.querySelector('.desktop-layout') || document.querySelector('.hud-glass') || document.querySelector('pre');
+            topBox.innerHTML = '<strong>SYSTEM STATUS: ONLINE</strong><br><br>' + (originalLogs ? originalLogs.innerHTML : 'Loading telemetry logs...');
+            app.appendChild(topBox);
+
+            // 2. Center Section: 3D Sphere Canvas
+            const canvasContainer = document.createElement('div');
+            canvasContainer.className = 'm-canvas-container';
+            const canvas = document.getElementById('canvas3d') || document.querySelector('canvas');
+            if (canvas) {
+                canvasContainer.appendChild(canvas);
+            }
+            app.appendChild(canvasContainer);
+
+            // 3. Bottom Section: Listening & Input Box
+            const bottomBox = document.createElement('div');
+            bottomBox.className = 'm-box m-input-area';
+            bottomBox.innerHTML = `
+                <div style="font-size: 12px; color: #00ffcc; text-align: center; margin-bottom: 4px; font-weight: bold;">
+                    LISTENING...<br><span style="font-size: 10px; color: #88ffcc;">(Continuous Stream Active)</span>
+                </div>
+                <div class="m-input-row">
+                    <input type="text" placeholder="Tap or speak command..." id="m-cmd-input">
+                    <button id="m-send-btn">Send</button>
+                </div>
+            `;
+            app.appendChild(bottomBox);
+
+            document.body.appendChild(app);
+        }
+    }
+});
+</script>
+
 </head>
 <body onclick="engageContinuousVoice()">
     <canvas id="canvas3d"></canvas>
@@ -807,35 +1379,96 @@ async def serve_master_ui():
     </script>
 
 
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
-/* Hide mobile card on desktop */
-
 @media screen and (max-width: 768px) {
-    /* Hide old desktop inputs on mobile */
-    form, .input-container, input[type="text"] {
+    /* 100% Transparent Glassmorphism Container matching Reference Image */
+    #mobile-exact-app .m-input-area {
+        background: rgba(0, 10, 15, 0.45) !important;
+        backdrop-filter: blur(6px) !important;
+        -webkit-backdrop-filter: blur(6px) !important;
+        border: 1px solid rgba(0, 255, 204, 0.6) !important;
+        border-radius: 14px !important;
+        padding: 14px !important;
+        box-shadow: 0 0 20px rgba(0, 255, 204, 0.15) inset, 0 0 10px rgba(0, 255, 204, 0.2) !important;
     }
-    
-    /* Show gorgeous mobile bottom card */
-    .mobile-glass-card {
+
+    /* Status text styling */
+    #mobile-exact-app .m-input-area > div:first-child {
+        font-family: monospace !important;
+        font-size: 11px !important;
+        color: #00ffcc !important;
+        text-align: center !important;
+        margin-bottom: 8px !important;
+        letter-spacing: 0.5px !important;
+        text-shadow: 0 0 5px rgba(0,255,204,0.5) !important;
+    }
+
+    .m-input-row {
+        display: flex !important;
+        gap: 10px !important;
+        align-items: center !important;
+        width: 100% !important;
+    }
+
+    /* Input wrapper matching mockup glass border */
+    .m-input-field-wrapper {
+        flex: 1 !important;
+        position: relative !important;
+        display: flex !important;
+        align-items: center !important;
+        background: rgba(0, 5, 8, 0.6) !important;
+        border: 1px solid rgba(0, 255, 204, 0.7) !important;
+        border-radius: 10px !important;
+        padding: 0 12px !important;
+        height: 42px !important;
+    }
+
+    .m-input-field-wrapper input {
+        width: 100% !important;
+        background: transparent !important;
+        border: none !important;
+        color: #00ffcc !important;
+        padding: 0 !important;
+        font-family: monospace !important;
+        font-size: 12px !important;
+        outline: none !important;
+    }
+
+    .m-input-field-wrapper input::placeholder {
+        color: rgba(0, 255, 204, 0.45) !important;
+    }
+
+    /* Mic icon inside wrapper */
+    .m-mic-icon {
+        width: 18px !important;
+        height: 18px !important;
+        fill: #00ffcc !important;
+        cursor: pointer !important;
+        flex-shrink: 0 !important;
+        margin-left: 8px !important;
+        filter: drop-shadow(0 0 3px rgba(0,255,204,0.6)) !important;
+    }
+
+    /* Send button matching mockup cyan rounded look */
+    .m-input-row button {
+        background: rgba(0, 136, 136, 0.85) !important;
+        border: 1px solid #00ffcc !important;
+        border-radius: 10px !important;
+        color: #ffffff !important;
+        padding: 0 18px !important;
+        height: 42px !important;
+        font-weight: bold !important;
+        font-family: monospace !important;
+        font-size: 13px !important;
+        letter-spacing: 0.5px !important;
+        cursor: pointer !important;
+        flex-shrink: 0 !important;
+        box-shadow: 0 0 10px rgba(0, 255, 204, 0.3) !important;
+        text-shadow: 0 0 3px rgba(0,255,204,0.5) !important;
     }
 }
 </style>
-
-<div class="mobile-glass-card">
-    <div style="font-family: monospace; font-size: 11px; color: #00ffcc; text-align: center; font-weight: bold; line-height: 1.4;">
-        LISTENING...<br>
-        <span style="font-size: 90%; font-weight: normal; opacity: 0.85;">(Continuous Stream Active)<br>Active)</span>
-    </div>
-    <div style="display: flex; gap: 10px; align-items: center; width: 100%; box-sizing: border-box;">
-        <div style="flex: 1; height: 42px; background: rgba(0, 5, 10, 0.85); border: 1px solid rgba(0, 255, 204, 0.6); border-radius: 10px; display: flex; align-items: center; padding: 0 12px;">
-            <input type="text" placeholder="Tap or speak command..." style="width: 100%; background: transparent; border: none; color: #00ffcc; font-family: monospace; font-size: 12px; outline: none;">
-            <svg style="width: 18px; height: 18px; fill: #00ffcc; flex-shrink: 0; margin-left: 8px; cursor: pointer;" viewBox="0 0 24 24">
-                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-            </svg>
-        </div>
-        <button style="height: 42px; background: rgba(0, 136, 136, 0.9); border: 1px solid #00ffcc; border-radius: 10px; color: #ffffff; padding: 0 18px; font-family: monospace; font-size: 13px; font-weight: bold; cursor: pointer; flex-shrink: 0; box-shadow: 0 0 10px rgba(0, 255, 204, 0.35);">Send</button>
-    </div>
-</div>
 
 </body>
 </html>"""
@@ -849,6 +1482,7 @@ async def terminal_main() -> None:
     audio = AudioService()
     proactive_brain = None
 
+    try:
         await assistant_instance.start()
         print("\n==============================")
         print("    R.I.A.N. MASTER ONLINE    ")
@@ -859,11 +1493,14 @@ async def terminal_main() -> None:
         )
         proactive_brain.start()
 
+        try:
             await audio.speak("Hello sir, mai RIAN hoon. Mai aapki kya madad karne ke liye ready hu")
         except Exception:
             pass
 
         while True:
+            try:
+                print("\n[1] Voice Command 🎤 | [2] Type Command ⌨️ | [3] Exit ❌")
                 mode = input("Select Mode (1/2/3): ").strip()
 
                 if mode == "3":
@@ -885,6 +1522,7 @@ async def terminal_main() -> None:
 
                 response = await assistant_instance.process_query(query)
                 print(f"\n🤖 R.I.A.N. >> {response}")
+                try:
                     await audio.speak(response)
                 except Exception:
                     pass
@@ -922,6 +1560,7 @@ class PCBridgeManager:
     async def execute_command(self, action: str, params: dict) -> dict:
         if not self.connected_pc:
             return {"status": "error", "message": "Laptop Bridge connected nahi hai."}
+        try:
             self._resp_future = asyncio.get_running_loop().create_future()
             await self.connected_pc.send_text(json.dumps({"action": action, "params": params}))
             res = await asyncio.wait_for(self._resp_future, timeout=25.0)
@@ -932,6 +1571,7 @@ class PCBridgeManager:
             self._resp_future = None
 
     async def handle_response(self, data_str: str):
+        try:
             data = json.loads(data_str)
             if self._resp_future and not self._resp_future.done():
                 self._resp_future.set_result(data)
@@ -945,6 +1585,7 @@ pc_tools.set_bridge_instance(pc_bridge)
 async def pc_bridge_route(websocket: WebSocket):
     await websocket.accept()
     await pc_bridge.register(websocket)
+    try:
         while True:
             data = await websocket.receive_text()
             await pc_bridge.handle_response(data)
@@ -980,6 +1621,7 @@ async def system_greeting():
 
 @app.post("/api/voice-query")
 async def voice_query_handler(file: UploadFile = File(...)):
+    try:
         audio_bytes = await file.read()
         transcription = groq_voice_client.audio.transcriptions.create(
             file=("audio.webm", audio_bytes),
@@ -1025,21 +1667,3 @@ if __name__ == "__main__":
         import uvicorn
 
         uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=True)
-
-import asyncio
-import json
-from fastapi import HTTPException
-
-active_bridge_ws = None
-
-@app.post("/inspect")
-async def inspect_screen():
-    global active_bridge_ws
-    if not active_bridge_ws:
-        raise HTTPException(status_code=400, detail="Local PC Bridge is not connected via WebSocket")
-    try:
-        await active_bridge_ws.send(json.dumps({"action": "inspect_screen", "params": {}}))
-        response_data = await asyncio.wait_for(active_bridge_ws.recv(), timeout=6.0)
-        return json.loads(response_data)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Screen inspection failed: {str(e)}")
