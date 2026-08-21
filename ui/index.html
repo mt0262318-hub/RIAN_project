@@ -6,144 +6,13 @@
     <meta charset="UTF-8">
     <title>J.I.V.A. / R.I.A.N. Neural Interface</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            background-color: #030712;
-            color: #00ffff;
-            font-family: 'Courier New', monospace;
-            overflow: hidden;
-            height: 100vh;
-            width: 100vw;
-        }
-        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        .hud-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
-            pointer-events: none; padding: 24px; display: grid;
-            grid-template-columns: 280px 1fr 340px; grid-template-rows: 1fr auto; gap: 20px;
-        }
-        .interactive { pointer-events: auto; }
-        .hud-card {
-            background: rgba(3, 7, 18, 0.75); border: 1px solid rgba(0, 255, 255, 0.3);
-            border-radius: 8px; padding: 16px; box-shadow: 0 0 15px rgba(0, 255, 255, 0.15); backdrop-filter: blur(8px);
-        }
-        .hud-title { font-size: 14px; font-weight: bold; letter-spacing: 2px; color: #00ffff; margin-bottom: 12px; border-bottom: 1px dashed rgba(0, 255, 255, 0.3); padding-bottom: 4px; }
-        .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; margin-bottom: 6px; border: 1px solid #00ffaa; color: #00ffaa; }
-        .purple-tag { border: 1px solid #d946ef; color: #d946ef; margin: 4px 0; padding: 4px 8px; font-size: 11px; border-radius: 4px; background: rgba(217, 70, 239, 0.05); }
-        .dashboard-content { height: 180px; overflow-y: auto; font-size: 11px; line-height: 1.5; color: #67e8f9; }
-        .control-bar { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 12px; }
-        .stream-status { font-size: 12px; letter-spacing: 2px; color: #00ffaa; }
-        .input-box-container { display: flex; width: 100%; max-width: 650px; gap: 8px; }
-        input[type="text"] {
-            flex: 1; background: rgba(3, 7, 18, 0.85); border: 1px solid #00ffff; border-radius: 6px;
-            padding: 12px 16px; color: #fff; font-family: inherit; font-size: 13px; outline: none;
-        }
-        button {
-            background: rgba(0, 255, 255, 0.15); border: 1px solid #00ffff; color: #00ffff;
-            padding: 0 24px; border-radius: 6px; font-family: inherit; font-weight: bold; cursor: pointer;
-        }
-        button:hover { background: #00ffff; color: #030712; }
-        .mic-active { background: #ff0055 !important; color: #ffffff !important; border-color: #ff0055 !important; box-shadow: 0 0 15px #ff0055; }
-    </style>
-
-<style>
-/* Auto-Responsive Universal Fix */
-@media screen and (max-width: 768px) {
-    body, html { overflow-x: hidden; width: 100%; }
-    div, section, main { max-width: 100% !important; box-sizing: border-box; }
-    .container, .dashboard, .panel { flex-direction: column !important; width: 100% !important; margin: 0 !important; padding: 8px !important; }
-}
-</style>
-
-<style>
-/* R.I.A.N. Mobile Precise Responsive Fix */
-@media screen and (max-width: 768px) {
-    body, html {
-    }
-    /* Stack panels and force full width */
-    div, section, canvas, header, footer {
-    }
-    /* Target the 3D globe / canvas container */
-    canvas {
-    }
-    /* Make logs and system panels stack vertically */
-    .panel, .log-box, pre, code {
-    }
-}
-</style>
+    
 
 
-<style>
-/* Force mobile to render the exact desktop 3D layout */
-@media screen and (max-width: 1024px) {
-    body {
-        transform-origin: top left;
-        transform: scale(0.38);
-    }
-}
-</style>
-
-<style>
-/* R.I.A.N. Clean Mobile Stack Fix */
-@media screen and (max-width: 768px) {
-    body {
-    }
-    /* Force all absolute desktop boxes to stack cleanly vertically */
-    div, section, header, footer, canvas {
-    }
-    canvas {
-    }
-}
-</style>
-
-
-<style>
-@media screen and (max-width: 768px) {
-    html, body {
-        width: 100vw;
-        height: 100vh;
-        overflow: hidden;
-        background: #000;
-        margin: 0;
-        padding: 0;
-    }
-    /* Wrap body contents to scale down desktop layout perfectly to mobile width */
-    body {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-    /* Scale the main app container to fit phone screen width */
-    .container, #app, canvas {
-        transform: scale(0.38);
-        transform-origin: center center;
-    }
-}
-</style>
 
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<style>
-@media screen and (max-width: 768px) {
-    body {
-        width: 100vw !important;
-        height: 100vh !important;
-        overflow: auto !important;
-        background: #000 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-    }
-    .container, #app, canvas {
-        max-width: 100% !important;
-        height: auto !important;
-        transform: scale(0.9) !important;
-        transform-origin: top center !important;
-    }
-}
-</style>
+
 
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -175,13 +44,79 @@
 }
 </style>
 
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+/* --- BASE RESET --- */
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    padding: 0;
+    background: #000;
+    color: #00ffcc;
+    font-family: monospace;
+    overflow-x: hidden;
+}
+
+/* --- DESKTOP VIEW (> 1024px) --- */
+@media screen and (min-width: 1025px) {
+    .container, #app, body > div {
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+    }
+}
+
+/* --- TABLET VIEW (769px to 1024px) --- */
+@media screen and (min-width: 769px) and (max-width: 1024px) {
+    body {
+        font-size: 14px;
+    }
+}
+
+/* --- MOBILE VIEW CONDITION (< 768px) --- */
+@media screen and (max-width: 768px) {
+    body {
+    }
+    
+    /* Condition-based stacking for all primary UI panels */
+    div, section, header, footer {
+    }
+
+    /* 3D Canvas dynamic condition for mobile screens */
+    canvas {
+    }
+}
+</style>
+
+<script>
+/* Dynamic Screen Condition Handler for JS-rendered elements */
+window.addEventListener('DOMContentLoaded', () => {
+    function applyScreenConditions() {
+        const width = window.innerWidth;
+        const canvas = document.querySelector('canvas');
+        if (canvas) {
+            if (width <= 768) {
+                canvas.style.width = '100%';
+                canvas.style.height = '280px';
+            } else {
+                canvas.style.width = '';
+                canvas.style.height = '';
+            }
+        }
+    }
+    window.addEventListener('resize', applyScreenConditions);
+    applyScreenConditions();
+});
+</script>
+
 </head>
 
 
 
 
 <body>
-<div id="scaled-desktop-view">
+
 
     <div id="canvas-container"></div>
     <div class="hud-layer">
@@ -451,6 +386,6 @@
         });
     </script>
 
-</div><!-- /scaled-desktop-view -->
+
 </body>
 </html>
