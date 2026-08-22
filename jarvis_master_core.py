@@ -3,7 +3,7 @@ import json
 import os
 import re
 
-# Instant Reflex Actions (<20ms latency bypass)
+# R.I.A.N. Direct Reflex Actions (<20ms latency bypass)
 DIRECT_ACTIONS = {
     "skip": {"action": "skip_song", "params": {}},
     "next": {"action": "skip_song", "params": {}},
@@ -18,14 +18,15 @@ DIRECT_ACTIONS = {
     "maximize": {"action": "window_control", "params": {"command": "maximize"}}
 }
 
-class JarvisReflexEngine:
+class RIANReflexEngine:
     def __init__(self):
+        self.system_identity = "R.I.A.N."
         self.active_context = {}
 
     def parse_quick_command(self, user_text: str):
         cleaned = user_text.lower().strip()
         
-        # 1. Zero-Latency Rule Match
+        # 1. Zero-Latency Reflex Rule Match
         for trigger, payload in DIRECT_ACTIONS.items():
             if trigger in cleaned:
                 return {"type": "reflex", "payload": payload}
@@ -38,12 +39,13 @@ class JarvisReflexEngine:
                 "payload": {"action": "play_youtube", "params": {"query": query}}
             }
 
-        # 3. Complex Task Routing
+        # 3. Complex Task Routing to R.I.A.N. Autonomous Brain
         return {
             "type": "complex",
-            "prompt": user_text
+            "prompt": user_text,
+            "engine": self.system_identity
         }
 
 if __name__ == "__main__":
-    engine = JarvisReflexEngine()
-    print("[✓] JARVIS High-Speed Reflex Engine Initialized.")
+    engine = RIANReflexEngine()
+    print("[✓] R.I.A.N. Master High-Speed Reflex Engine Initialized.")
