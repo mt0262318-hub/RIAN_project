@@ -14,7 +14,10 @@ class MemoryLearner:
     def learn_fact(self, key_insight: str):
         with open(self.memory_file, "r") as f:
             data = json.load(f)
-        data["facts"].append({"timestamp": datetime.now().isoformat(), "fact": key_insight})
+        
+        timestamp = datetime.now().isoformat()
+        data["facts"].append({"timestamp": timestamp, "fact": key_insight})
+        
         with open(self.memory_file, "w") as f:
             json.dump(data, f, indent=2)
         print(f"[Memory Engine] Learned & Stored: {key_insight}")
