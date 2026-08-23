@@ -1,4 +1,10 @@
 
+try:
+    from services.direct_dialogue_engine import get_dialogue_reply
+except Exception:
+    def get_dialogue_reply(p): return f"Ji Manish, command {p} processed."
+
+
 async def process_user_command_fast(text: str):
     t = text.lower()
     if "joke" in t:
