@@ -1,3 +1,18 @@
+
+async def process_user_command_fast(text: str):
+    t = text.lower()
+    if "joke" in t:
+        return "Teacher ne pucha sabse bada fool kaun? Student ne bola: Jo bina padhe exam de!"
+    if "whatsapp" in t:
+        return "Opening WhatsApp bridge now."
+    if "telegram" in t:
+        return "Opening Telegram bridge now."
+    if "youtube" in t:
+        return "Opening YouTube now."
+    if "notepad" in t:
+        return "Opening Notepad."
+    return f"Ji Manish, aapka command '{text}' execute kar diya hai."
+
 from services.ingress_router import ingress_bp
 from tools.vault_tool_schema import VAULT_TOOLS, handle_vault_call
 from langchain_core.messages import SystemMessage, HumanMessage
