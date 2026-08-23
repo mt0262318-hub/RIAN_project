@@ -2005,10 +2005,7 @@ async def voice_query_handler(file: UploadFile = File(...)):
 # ==========================================
 # MAIN EXECUTION ENTRY POINT (ALWAYS AT THE END)
 # ==========================================
-if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--cli":
-        asyncio.run(terminal_main())
-    else:
-        import uvicorn
 
-        uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=False)
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=False, workers=1)
