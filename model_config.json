@@ -1,0 +1,5 @@
+{
+  "default_fast_model": "llama3.2:1b",
+  "reasoning_model": "llama3.2:1b",
+  "fallback_model": "qwen2.5:0.5b"
+}
