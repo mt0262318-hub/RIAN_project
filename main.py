@@ -1,5 +1,4 @@
-python3 - << 'EOF'
-full_code = '''import os
+import os
 import sys
 import io
 import time
@@ -54,23 +53,31 @@ load_dotenv()
 configure_logging()
 logger = get_logger("rian.master_core")
 
+# --- Request Cache & Execution Locks (Loop/Echo Preventer) ---
 def clean_llm_response(text: str) -> str:
     if not isinstance(text, str):
         return str(text)
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-    text = re.sub(r"Here's a thinking process:.*?(?=\\n\\n|[A-Z][a-z]+:|$)", "", text, flags=re.DOTALL)
-    text = re.sub(r"\\*\\*Analyze User Input:\\*\\*.*?(?=\\n\\n|[A-Z][a-z]+:|$)", "", text, flags=re.DOTALL)
-    text = re.sub(r"(\\*\\*Draft.*|\\*Draft.*|Output Generation:.*|\\[USER\\].*|\\[RIAN\\].*)", "", text, flags=re.DOTALL)
-    text = re.sub(r"\\*\\*Final Output:\\*\\*.*", "", text, flags=re.DOTALL)
+    text = re.sub(r"Here\'s a thinking process:.*?(?=\n\n|[A-Z][a-z]+:|$)", "", text, flags=re.DOTALL)
+    text = re.sub(r"\*\*Analyze User Input:\*\*.*?(?=\n\n|[A-Z][a-z]+:|$)", "", text, flags=re.DOTALL)
+    text = re.sub(r"(\*\*Draft.*|\*Draft.*|Output Generation:.*|\[USER\].*|\[RIAN\].*)", "", text, flags=re.DOTALL)
+    text = re.sub(r"\*\*Final Output:\*\*.*", "", text, flags=re.DOTALL)
     return text.strip()
 
+processed_requests: Dict[str, float] = {}
+session_locks: Dict[str, Any] = {}
+
+async def run_direct_vision(prompt_text: str) -> str:
+    return pc_tools.run_screen_vision(prompt_text)
+
+# --- CONVERSATION MEMORY & PERSISTENT PERSONA ---
 conversation_history: Dict[str, List[Any]] = {}
 
 RIAN_SYSTEM_PROMPT = """You are R.I.A.N. (Real-time Intelligent Adaptive Node), an elite, highly intelligent, and witty personal AI assistant.
 
 CORE RULES & IDENTITY:
-1. Self-Awareness: You HAVE active real-time speech and full access to PC controls. NEVER say you cannot speak or lack desktop capabilities.
-2. Context Memory: Always maintain full context of recent conversation turns.
+1. Self-Awareness: You HAVE active real-time Edge-TTS speech and full access to PC controls (mouse, keyboard, media, apps, and vision). NEVER say you cannot speak or lack desktop capabilities.
+2. Context Memory: Always maintain full context of recent conversation turns. Answer follow-up questions accurately without drifting off-topic.
 3. Desktop Operations: If the user asks to control the PC (skip songs, skip ads, type text, click, open apps), acknowledge cleanly and trigger the appropriate action.
 4. Tone & Style: Sharp, respectful, authentic, and direct. Communicate in natural, clear Hinglish/English."""
 
@@ -81,6 +88,7 @@ def get_or_create_history(session_id: str) -> List[Any]:
 
 async def generate_rian_response(user_id: str, user_query: str, llm_instance) -> str:
     history = get_or_create_history(user_id)
+
     messages = [SystemMessage(content=RIAN_SYSTEM_PROMPT)]
     messages.extend(history[-8:])
     
@@ -106,12 +114,14 @@ async def generate_rian_response(user_id: str, user_query: str, llm_instance) ->
 # ==========================================
 class VoiceBiometricsEngine:
     """Speaker Recognition & Voice-Locked Mode Spec"""
+
     def __init__(self):
         self.enrolled_voiceprint: Optional[str] = "VOICEPRINT_MANISH_PRIMARY"
         self.lock_mode_enabled: bool = True
         self.confidence_threshold: float = 0.85
 
     async def verify_speaker(self, audio_data: Optional[bytes] = None) -> Dict[str, Any]:
+        """Verify audio biometric matches enrolled owner print"""
         if not self.lock_mode_enabled:
             return {"authenticated": True, "confidence": 1.0, "speaker": "Owner"}
         return {
@@ -126,6 +136,7 @@ class VoiceBiometricsEngine:
 # ==========================================
 class RIANAssistant:
     """Master Autonomous AI Engine for R.I.A.N."""
+
     def __init__(self) -> None:
         logger.info("Initializing R.I.A.N. Assistant Master Core...")
         self.llm = ChatGroq(
@@ -155,6 +166,7 @@ class RIANAssistant:
         logger.warning(f"ALERT [{alert_type}]: {message}")
 
     async def retrieve_relevant_memory(self, query: str) -> str:
+        """Fetch memory embeddings and semantic context"""
         try:
             if vector_db:
                 matches = await asyncio.to_thread(vector_db.search, query, top_k=2)
@@ -165,10 +177,12 @@ class RIANAssistant:
         return "Context: Active Session Online"
 
     async def process_query(self, query: str, user_id: str = "default_user") -> str:
+        """Multi-Stage Intercept, Context Augment & LangGraph Execution"""
         try:
             session = await session_manager
             query_lower = query.lower().strip()
 
+            # Fast Context Interceptions: Persona Switch
             detected_persona = persona_engine.detect_persona_switch(query)
             if detected_persona:
                 persona_engine.set_persona(user_id, detected_persona)
@@ -183,6 +197,7 @@ class RIANAssistant:
                 else:
                     return "Default R.I.A.N. Core mode restored."
 
+            # Fast Context Interceptions: Name registration
             if "mera naam" in query_lower and ("hai" in query_lower or "rakh" in query_lower):
                 words = query_lower.split()
                 try:
@@ -193,22 +208,26 @@ class RIANAssistant:
                 except Exception:
                     pass
 
+            # Fast Context Interceptions: Name retrieval
             if any(x in query_lower for x in ["mera naam kya", "what is my name", "who am i"]):
                 name = session.context.get("Name")
                 if name:
                     return f"Aapka naam {name} hai."
                 return "Mujhe abhi aapka naam nahi pata. Kripya apna naam batayein."
 
+            # Code Sandbox Intent Interception
             if query_lower.startswith("run code:") or query_lower.startswith("exec:"):
                 raw_code = query.split(":", 1)[1].strip()
                 sandbox_result = await asyncio.to_thread(sandbox.execute, raw_code)
-                return f"[Sandbox Execution Result]:\\n{sandbox_result}"
+                return f"[Sandbox Execution Result]:\n{sandbox_result}"
 
+            # Memory Retrieval & Session Context Augmented Prompt
             retrieved_memory = await self.retrieve_relevant_memory(query)
             user_name = session.context.get("Name", "Unknown")
             profile_text = f"User ID: {user_id}, Name: {user_name}, Memory: {retrieved_memory}"
-            enhanced_query = f"[System Context -> {profile_text}]\\nUser Query: {query}"
+            enhanced_query = f"[System Context -> {profile_text}]\nUser Query: {query}"
 
+            # Async LangGraph Multi-Tool Execution
             result = await asyncio.to_thread(
                 self.agent.invoke,
                 {"messages": [HumanMessage(content=enhanced_query)]},
@@ -240,6 +259,8 @@ app = FastAPI(title="J.I.V.A. / R.I.A.N. Autonomous AI Master")
 app.include_router(ingress_bp)
 
 class ConnectionManager:
+    """Manages active WebSockets and telemetry streams"""
+
     def __init__(self):
         self.active_connections: List[WebSocket] = []
 
@@ -292,7 +313,7 @@ async def chat_with_rian(request: ChatRequest):
             "status": "success",
             "user_id": request.user_id,
             "response": response_text,
-            "text": response_text
+            "text": response_text,
         }
     except Exception as e:
         return {"status": "error", "response": f"Error processing query: {str(e)}"}
@@ -389,12 +410,17 @@ async def websocket_telemetry(websocket: WebSocket):
                 continue
 
             q_low = query.lower()
+
+            # Direct Screen Vision Intercept
             if any(k in q_low for k in ["screen", "dekh", "dekho", "kya khula", "kya chal raha"]):
-                vision_out = pc_tools.run_screen_vision(query)
                 await websocket.send_json({"type": "log", "log": query})
+                await websocket.send_json({"type": "state", "state_text": "ANALYZING SCREEN..."})
+                vision_out = pc_tools.run_screen_vision(query)
                 await websocket.send_json({"type": "response", "reply": vision_out, "text": vision_out})
+                await websocket.send_json({"type": "state", "state_text": "LISTENING... (Continuous Stream Active)"})
                 continue
 
+            # Quick Desktop Action Hooks
             if "notepad" in q_low:
                 await pc_bridge.execute_command("launch_target", {"target": "notepad"})
                 await websocket.send_json({"type": "log", "log": query})
@@ -407,18 +433,34 @@ async def websocket_telemetry(websocket: WebSocket):
                 await websocket.send_json({"type": "response", "reply": "YouTube play ho raha hai."})
                 continue
 
-            # 1. User command log to Dashboard
-            await websocket.send_json({"type": "log", "log": query})
-            await websocket.send_json({"type": "state", "state_text": "THINKING..."})
+            # --- DEDUPLICATION SHIELD ---
+            req_id = payload.get("request_id")
+            now = time.time()
+            for r_id, t_stamp in list(processed_requests.items()):
+                if now - t_stamp > 10.0:
+                    processed_requests.pop(r_id, None)
 
-            # 2. LLM response calculation
+            if req_id and req_id in processed_requests:
+                continue
+
+            if req_id:
+                processed_requests[req_id] = now
+
+            # Step 1: Echo User Input to HUD Log
+            await websocket.send_json({"type": "log", "log": query})
+            await websocket.send_json({
+                "type": "state",
+                "state_text": "THINKING...",
+            })
+
+            # Step 2: Context-Aware Autonomous Generation
             response_text = await generate_rian_response(
                 user_id=user_id,
                 user_query=query,
                 llm_instance=chat_groq
             )
 
-            # 3. Output broadcast to HUD & Voice TTS
+            # Step 3: Broadcast Response and Set Active Listener State
             await websocket.send_json({
                 "type": "response",
                 "reply": response_text,
@@ -426,7 +468,7 @@ async def websocket_telemetry(websocket: WebSocket):
             })
             await websocket.send_json({
                 "type": "state",
-                "state_text": "LISTENING... (Continuous Stream Active)"
+                "state_text": "LISTENING... (Continuous Stream Active)",
             })
     except WebSocketDisconnect:
         manager.disconnect(websocket)
@@ -502,49 +544,81 @@ async def serve_master_ui():
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; user-select: none; }
         body { background: #000308; color: #00e5ff; overflow: hidden; height: 100vh; width: 100vw; position: relative; }
         #canvas3d { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
         .hud-glass {
             background: rgba(3, 15, 29, 0.75);
             border: 1px solid rgba(0, 229, 255, 0.45);
             box-shadow: 0 0 25px rgba(0, 229, 255, 0.2), inset 0 0 15px rgba(0, 229, 255, 0.1);
-            border-radius: 8px; backdrop-filter: blur(14px); position: absolute; z-index: 10;
+            border-radius: 8px;
+            backdrop-filter: blur(14px);
+            position: absolute;
+            z-index: 10;
         }
         .memory-badge {
-            background: rgba(45, 0, 75, 0.65); border: 1px solid #bd00ff; color: #e29aff;
-            border-radius: 6px; padding: 6px 12px; font-size: 11px; font-weight: bold;
-            box-shadow: 0 0 16px rgba(189, 0, 255, 0.5); position: absolute; z-index: 10;
+            background: rgba(45, 0, 75, 0.65);
+            border: 1px solid #bd00ff;
+            color: #e29aff;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: bold;
+            box-shadow: 0 0 16px rgba(189, 0, 255, 0.5);
+            position: absolute;
+            z-index: 10;
+            letter-spacing: 1px;
         }
+
         .desktop-status { top: 25px; left: 30px; width: 280px; padding: 18px; }
         .desktop-status h3 { font-size: 16px; letter-spacing: 3px; margin-bottom: 8px; text-shadow: 0 0 10px #00e5ff; }
         .desktop-status p { font-size: 11px; line-height: 1.7; color: #9feeff; }
+
         .desktop-logs { top: 40px; right: 30px; width: 340px; padding: 18px; }
         .desktop-logs h4 { font-size: 14px; letter-spacing: 2px; margin-bottom: 8px; }
         .log-stream { font-size: 11px; color: #7ce8ff; height: 180px; max-height: 180px; overflow-y: auto; line-height: 1.6; }
         .log-stream::-webkit-scrollbar { width: 4px; }
         .log-stream::-webkit-scrollbar-thumb { background: #00e5ff; border-radius: 2px; }
+
         .dt-node-1 { top: 40px; right: 390px; }
         .dt-node-2 { top: 120px; right: 380px; }
         .dt-node-3 { bottom: 180px; left: 40px; }
         .dt-node-4 { bottom: 110px; left: 60px; }
         .dt-node-5 { bottom: 130px; right: 90px; }
         .dt-node-6 { bottom: 65px; right: 110px; }
+
         .desktop-bottom-bar {
             bottom: 25px; left: 50%; transform: translateX(-50%);
-            width: 640px; padding: 14px 22px; text-align: center; z-index: 20;
+            width: 640px; padding: 14px 22px; text-align: center;
+            z-index: 20;
         }
+
         .status-headline { font-size: 12px; font-weight: bold; letter-spacing: 3px; margin-bottom: 10px; text-shadow: 0 0 10px #00e5ff; }
         .input-row { display: flex; gap: 10px; width: 100%; }
         .hud-input {
             flex: 1; background: rgba(0, 18, 32, 0.85); border: 1px solid #00e5ff;
             color: #00e5ff; padding: 10px 14px; border-radius: 6px; outline: none; font-size: 13px;
+            box-shadow: inset 0 0 8px rgba(0, 229, 255, 0.2);
         }
         .hud-btn {
             background: rgba(0, 229, 255, 0.25); border: 1px solid #00e5ff; color: #00e5ff;
             padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold;
+            transition: 0.2s;
         }
         .hud-btn:hover { background: #00e5ff; color: #000; box-shadow: 0 0 15px #00e5ff; }
+
         .desktop-diagnostics {
             position: absolute; top: 175px; left: 25px; width: 340px; height: 320px; padding: 14px;
-            display: flex; flex-direction: column; z-index: 10; background: rgba(3, 15, 29, 0.85); border: 1px solid rgba(0, 255, 170, 0.5);
+            display: flex; flex-direction: column; z-index: 10; background: rgba(3, 15, 29, 0.85);
+            border: 1px solid rgba(0, 255, 170, 0.5);
+        }
+
+        @media (max-width: 768px) {
+            body { overflow-y: auto !important; }
+            .desktop-status, .desktop-diagnostics, .desktop-logs, .desktop-bottom-bar, .memory-badge {
+                position: relative !important; top: auto !important; left: auto !important;
+                right: auto !important; bottom: auto !important; width: 95% !important;
+                margin: 10px auto !important; transform: none !important;
+            }
+            #canvas3d { height: 260px !important; position: relative !important; }
         }
     </style>
 </head>
@@ -718,6 +792,7 @@ async def serve_master_ui():
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
+        // Diagnostic stream simulation
         const liveTests = [
             "Vector Memory Pulse -> 3120 Vectors Synced",
             "Agent Tool Schema Integrity -> 16 Tools Active",
@@ -757,12 +832,3 @@ async def serve_master_ui():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=False, workers=1)
-'''
-
-with open("/home/ubuntu/RIAN_project/main.py", "w") as f:
-    f.write(full_code)
-print("[✓] Complete main.py rewritten cleanly.")
-EOF
-
-python3 -c "import main; print('[✓] Zero Errors. main.py imported successfully!')"
-sudo systemctl restart rian-core
