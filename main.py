@@ -1,5 +1,5 @@
-cat << 'EOF' > /home/ubuntu/RIAN_project/main.py
-import os
+python3 - << 'EOF'
+full_code = '''import os
 import sys
 import io
 import time
@@ -54,24 +54,16 @@ load_dotenv()
 configure_logging()
 logger = get_logger("rian.master_core")
 
-# --- Request Cache & Execution Locks ---
 def clean_llm_response(text: str) -> str:
     if not isinstance(text, str):
         return str(text)
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-    text = re.sub(r"Here\'s a thinking process:.*?(?=\n\n|[A-Z][a-z]+:|$)", "", text, flags=re.DOTALL)
-    text = re.sub(r"\*\*Analyze User Input:\*\*.*?(?=\n\n|[A-Z][a-z]+:|$)", "", text, flags=re.DOTALL)
-    text = re.sub(r"(\*\*Draft.*|\*Draft.*|Output Generation:.*|\[USER\].*|\[RIAN\].*)", "", text, flags=re.DOTALL)
-    text = re.sub(r"\*\*Final Output:\*\*.*", "", text, flags=re.DOTALL)
+    text = re.sub(r"Here's a thinking process:.*?(?=\\n\\n|[A-Z][a-z]+:|$)", "", text, flags=re.DOTALL)
+    text = re.sub(r"\\*\\*Analyze User Input:\\*\\*.*?(?=\\n\\n|[A-Z][a-z]+:|$)", "", text, flags=re.DOTALL)
+    text = re.sub(r"(\\*\\*Draft.*|\\*Draft.*|Output Generation:.*|\\[USER\\].*|\\[RIAN\\].*)", "", text, flags=re.DOTALL)
+    text = re.sub(r"\\*\\*Final Output:\\*\\*.*", "", text, flags=re.DOTALL)
     return text.strip()
 
-processed_requests: Dict[str, float] = {}
-session_locks: Dict[str, Any] = {}
-
-async def run_direct_vision(prompt_text: str) -> str:
-    return pc_tools.run_screen_vision(prompt_text)
-
-# --- CONVERSATION MEMORY & PERSISTENT PERSONA ---
 conversation_history: Dict[str, List[Any]] = {}
 
 RIAN_SYSTEM_PROMPT = """You are R.I.A.N. (Real-time Intelligent Adaptive Node), an elite, highly intelligent, and witty personal AI assistant.
@@ -210,12 +202,12 @@ class RIANAssistant:
             if query_lower.startswith("run code:") or query_lower.startswith("exec:"):
                 raw_code = query.split(":", 1)[1].strip()
                 sandbox_result = await asyncio.to_thread(sandbox.execute, raw_code)
-                return f"[Sandbox Execution Result]:\n{sandbox_result}"
+                return f"[Sandbox Execution Result]:\\n{sandbox_result}"
 
             retrieved_memory = await self.retrieve_relevant_memory(query)
             user_name = session.context.get("Name", "Unknown")
             profile_text = f"User ID: {user_id}, Name: {user_name}, Memory: {retrieved_memory}"
-            enhanced_query = f"[System Context -> {profile_text}]\nUser Query: {query}"
+            enhanced_query = f"[System Context -> {profile_text}]\\nUser Query: {query}"
 
             result = await asyncio.to_thread(
                 self.agent.invoke,
@@ -415,18 +407,18 @@ async def websocket_telemetry(websocket: WebSocket):
                 await websocket.send_json({"type": "response", "reply": "YouTube play ho raha hai."})
                 continue
 
-            # Step 1: Log to dashboard & update state
+            # 1. User command log to Dashboard
             await websocket.send_json({"type": "log", "log": query})
             await websocket.send_json({"type": "state", "state_text": "THINKING..."})
 
-            # Step 2: Generate response
+            # 2. LLM response calculation
             response_text = await generate_rian_response(
                 user_id=user_id,
                 user_query=query,
                 llm_instance=chat_groq
             )
 
-            # Step 3: Broadcast Response
+            # 3. Output broadcast to HUD & Voice TTS
             await websocket.send_json({
                 "type": "response",
                 "reply": response_text,
@@ -765,5 +757,12 @@ async def serve_master_ui():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=False, workers=1)
+'''
+
+with open("/home/ubuntu/RIAN_project/main.py", "w") as f:
+    f.write(full_code)
+print("[✓] Complete main.py rewritten cleanly.")
 EOF
+
+python3 -c "import main; print('[✓] Zero Errors. main.py imported successfully!')"
 sudo systemctl restart rian-core
