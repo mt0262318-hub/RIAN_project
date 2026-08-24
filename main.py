@@ -2060,3 +2060,28 @@ async def voice_query_handler(file: UploadFile = File(...)):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=False, workers=1)
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    while True:
+        try:
+            data = await websocket.receive_text()
+            import json
+            payload = json.loads(data)
+            query = payload.get("text", payload.get("command", payload.get("message", "")))
+            if query:
+                from agentic_core import orchestrator
+                res = orchestrator.plan_and_execute(query)
+                reply_text = res.get("response", "Command executed.")
+                out_pkt = {
+                    "type": "agent_response",
+                    "status": "completed",
+                    "text": reply_text,
+                    "response": reply_text,
+                    "voice_text": reply_text
+                }
+                await websocket.send_text(json.dumps(out_pkt))
+        except Exception:
+            break

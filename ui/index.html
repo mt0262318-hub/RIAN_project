@@ -423,5 +423,45 @@ window.WebSocket = function(url, protocols) {
 };
 </script>
 
+
+<script>
+window.addEventListener('load', () => {
+    function speakText(txt) {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(txt);
+        u.rate = 1.0;
+        u.lang = 'hi-IN';
+        window.speechSynthesis.speak(u);
+    }
+
+    // Force UI status box unfreeze
+    const checkInterval = setInterval(() => {
+        const procElem = Array.from(document.querySelectorAll('*')).find(el => el.textContent && el.textContent.includes('Processing neural command...'));
+        if (procElem && window.__last_spoken_text) {
+            procElem.textContent = "IDLE - READY";
+        }
+    }, 500);
+
+    const origWS = window.WebSocket;
+    window.WebSocket = function(url, protocols) {
+        const ws = new origWS(url, protocols);
+        ws.addEventListener('message', (ev) => {
+            try {
+                const d = JSON.parse(ev.data);
+                const txt = d.text || d.response || d.voice_text;
+                if (txt) {
+                    window.__last_spoken_text = txt;
+                    speakText(txt);
+                    const procElem = Array.from(document.querySelectorAll('*')).find(el => el.textContent && el.textContent.includes('Processing neural command...'));
+                    if (procElem) procElem.textContent = "READY";
+                }
+            } catch(e) {}
+        });
+        return ws;
+    };
+});
+</script>
+
 </body>
 </html>
