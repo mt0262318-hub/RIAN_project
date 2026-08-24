@@ -1,4 +1,3 @@
-cat << 'EOF' > /home/ubuntu/RIAN_project/main.py
 import os
 import sys
 import io
