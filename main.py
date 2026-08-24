@@ -2065,3 +2065,24 @@ async def handle_agent_http_post(req: CommandReq):
         "voice_text": reply,
         "reply": reply
     })
+
+
+from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+
+class UserCommandReq(BaseModel):
+    text: str = ""
+    command: str = ""
+
+@app.post("/api/command")
+async def execute_user_api_cmd(req: UserCommandReq):
+    query = req.text or req.command or "hello"
+    from agentic_core import orchestrator
+    res = orchestrator.plan_and_execute(query)
+    reply = res.get("response", "Command executed.")
+    return JSONResponse(content={
+        "status": "success",
+        "response": reply,
+        "text": reply,
+        "voice_text": reply
+    })
