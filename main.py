@@ -2085,3 +2085,27 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_text(json.dumps(out_pkt))
         except Exception:
             break
+
+
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+
+class CommandReq(BaseModel):
+    text: str = ""
+    command: str = ""
+
+@app.post("/api/command")
+@app.post("/command")
+@app.post("/chat")
+async def handle_agent_http_post(req: CommandReq):
+    query = req.text or req.command or "hello"
+    from agentic_core import orchestrator
+    res = orchestrator.plan_and_execute(query)
+    reply = res.get("response", "Command executed successfully.")
+    return JSONResponse(content={
+        "status": "success",
+        "text": reply,
+        "response": reply,
+        "voice_text": reply,
+        "reply": reply
+    })
