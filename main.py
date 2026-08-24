@@ -1,4 +1,17 @@
 
+from agentic_core import orchestrator
+
+async def execute_agent_command(user_text: str):
+    res = orchestrator.plan_and_execute(user_text)
+    return {
+        "text": res["response"],
+        "response": res["response"],
+        "voice_text": res.get("voice_text", res["response"]),
+        "status": "completed",
+        "agent": res.get("role")
+    }
+
+
 async def execute_agent_command(user_text: str):
     p = user_text.lower().strip()
     if "joke" in p:
