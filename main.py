@@ -308,6 +308,25 @@ class RIANAssistant:
 # ==========================================
 assistant_instance = RIANAssistant()
 app = FastAPI(title="J.I.V.A. / R.I.A.N. Autonomous AI Master")
+
+from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+
+class UserCommandReq(BaseModel):
+    text: str = ""
+    command: str = ""
+
+@app.post("/api/command")
+async def execute_user_api_cmd(req: UserCommandReq):
+    query = req.text or req.command or "hello"
+    try:
+        from agentic_core import orchestrator
+        res = orchestrator.plan_and_execute(query)
+        reply = res.get("response", "Command executed.")
+    except Exception as e:
+        reply = f"Response: {query}"
+    return JSONResponse(content={"status": "success", "response": reply, "text": reply})
+
 app.include_router(ingress_bp)
 
 
@@ -2018,20 +2037,7 @@ async def voice_query_handler(file: UploadFile = File(...)):
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse
 
-class UserCommandReq(BaseModel):
-    text: str = ""
-    command: str = ""
 
-@app.post("/api/command")
-async def execute_user_api_cmd(req: UserCommandReq):
-    query = req.text or req.command or "hello"
-    try:
-        from agentic_core import orchestrator
-        res = orchestrator.plan_and_execute(query)
-        reply = res.get("response", "Command executed.")
-    except Exception as e:
-        reply = f"Response ready: {query}"
-    return JSONResponse(content={"status": "success", "response": reply, "text": reply})
 
 if __name__ == "__main__":
     import uvicorn
