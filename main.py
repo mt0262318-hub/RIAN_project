@@ -1,3 +1,4 @@
+cat << 'EOF' > /home/ubuntu/RIAN_project/main.py
 import os
 import sys
 import io
@@ -13,6 +14,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, File, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 from groq import Groq
@@ -76,7 +78,7 @@ conversation_history: Dict[str, List[Any]] = {}
 RIAN_SYSTEM_PROMPT = """You are R.I.A.N. (Real-time Intelligent Adaptive Node), an elite, highly intelligent, and witty personal AI assistant.
 
 CORE RULES & IDENTITY:
-1. Self-Awareness: You HAVE active real-time Edge-TTS speech and full access to PC controls (mouse, keyboard, media, apps, and vision). NEVER say you cannot speak or lack desktop capabilities.
+1. Self-Awareness: You HAVE active real-time speech and full access to PC controls (mouse, keyboard, media, apps, and vision). NEVER say you cannot speak or lack desktop capabilities.
 2. Context Memory: Always maintain full context of recent conversation turns. Answer follow-up questions accurately without drifting off-topic.
 3. Desktop Operations: If the user asks to control the PC (skip songs, skip ads, type text, click, open apps), acknowledge cleanly and trigger the appropriate action.
 4. Tone & Style: Sharp, respectful, authentic, and direct. Communicate in natural, clear Hinglish/English."""
@@ -88,7 +90,6 @@ def get_or_create_history(session_id: str) -> List[Any]:
 
 async def generate_rian_response(user_id: str, user_query: str, llm_instance) -> str:
     history = get_or_create_history(user_id)
-
     messages = [SystemMessage(content=RIAN_SYSTEM_PROMPT)]
     messages.extend(history[-8:])
     
@@ -135,7 +136,7 @@ class VoiceBiometricsEngine:
 # MASTER AUTONOMOUS ASSISTANT CORE
 # ==========================================
 class RIANAssistant:
-    """Master Autonomous AI Engine for R.I.A.N."""
+    """Master Autonomous AI Engine for R.I.A.N. / J.I.V.A."""
 
     def __init__(self) -> None:
         logger.info("Initializing R.I.A.N. Assistant Master Core...")
@@ -166,7 +167,6 @@ class RIANAssistant:
         logger.warning(f"ALERT [{alert_type}]: {message}")
 
     async def retrieve_relevant_memory(self, query: str) -> str:
-        """Fetch memory embeddings and semantic context"""
         try:
             if vector_db:
                 matches = await asyncio.to_thread(vector_db.search, query, top_k=2)
@@ -177,12 +177,10 @@ class RIANAssistant:
         return "Context: Active Session Online"
 
     async def process_query(self, query: str, user_id: str = "default_user") -> str:
-        """Multi-Stage Intercept, Context Augment & LangGraph Execution"""
         try:
             session = await session_manager
             query_lower = query.lower().strip()
 
-            # Fast Context Interceptions: Persona Switch
             detected_persona = persona_engine.detect_persona_switch(query)
             if detected_persona:
                 persona_engine.set_persona(user_id, detected_persona)
@@ -197,7 +195,6 @@ class RIANAssistant:
                 else:
                     return "Default R.I.A.N. Core mode restored."
 
-            # Fast Context Interceptions: Name registration
             if "mera naam" in query_lower and ("hai" in query_lower or "rakh" in query_lower):
                 words = query_lower.split()
                 try:
@@ -208,26 +205,22 @@ class RIANAssistant:
                 except Exception:
                     pass
 
-            # Fast Context Interceptions: Name retrieval
             if any(x in query_lower for x in ["mera naam kya", "what is my name", "who am i"]):
                 name = session.context.get("Name")
                 if name:
                     return f"Aapka naam {name} hai."
                 return "Mujhe abhi aapka naam nahi pata. Kripya apna naam batayein."
 
-            # Code Sandbox Intent Interception
             if query_lower.startswith("run code:") or query_lower.startswith("exec:"):
                 raw_code = query.split(":", 1)[1].strip()
                 sandbox_result = await asyncio.to_thread(sandbox.execute, raw_code)
                 return f"[Sandbox Execution Result]:\n{sandbox_result}"
 
-            # Memory Retrieval & Session Context Augmented Prompt
             retrieved_memory = await self.retrieve_relevant_memory(query)
             user_name = session.context.get("Name", "Unknown")
             profile_text = f"User ID: {user_id}, Name: {user_name}, Memory: {retrieved_memory}"
             enhanced_query = f"[System Context -> {profile_text}]\nUser Query: {query}"
 
-            # Async LangGraph Multi-Tool Execution
             result = await asyncio.to_thread(
                 self.agent.invoke,
                 {"messages": [HumanMessage(content=enhanced_query)]},
@@ -256,11 +249,16 @@ class RIANAssistant:
 # ==========================================
 assistant_instance = RIANAssistant()
 app = FastAPI(title="J.I.V.A. / R.I.A.N. Autonomous AI Master")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(ingress_bp)
 
 class ConnectionManager:
-    """Manages active WebSockets and telemetry streams"""
-
     def __init__(self):
         self.active_connections: List[WebSocket] = []
 
@@ -293,8 +291,9 @@ async def shutdown_event():
 # PYDANTIC SCHEMAS & API ENDPOINTS
 # ==========================================
 class ChatRequest(BaseModel):
-    query: str
-    user_id: str = Field(default="default_user", description="Unique user session identifier")
+    query: Optional[str] = ""
+    text: Optional[str] = ""
+    user_id: str = Field(default="Manish", description="Unique user session identifier")
 
 class BiometricsRequest(BaseModel):
     user_id: str
@@ -302,21 +301,32 @@ class BiometricsRequest(BaseModel):
 
 @app.post("/api/chat")
 async def chat_with_rian(request: ChatRequest):
-    try:
-        chat_groq = ChatGroq(model_name="llama-3.3-70b-versatile", temperature=0.5)
-        response_text = await generate_rian_response(
-            user_id=request.user_id,
-            user_query=request.query,
-            llm_instance=chat_groq
-        )
-        return {
-            "status": "success",
-            "user_id": request.user_id,
-            "response": response_text,
-            "text": response_text,
-        }
-    except Exception as e:
-        return {"status": "error", "response": f"Error processing query: {str(e)}"}
+    q = (request.query or request.text or "").strip()
+    if not q:
+        return {"status": "error", "response": "Empty query received."}
+    
+    q_low = q.lower()
+    if any(k in q_low for k in ["screen", "dekh", "dekho", "kya khula"]):
+        vision_out = pc_tools.run_screen_vision(q)
+        return {"status": "success", "response": vision_out, "reply": vision_out}
+
+    if "notepad" in q_low:
+        await pc_bridge.execute_command("launch_target", {"target": "notepad"})
+        return {"status": "success", "response": "Notepad open kar diya hai.", "reply": "Notepad open kar diya hai."}
+    elif "youtube" in q_low:
+        search_kw = q_low.replace("open", "").replace("youtube", "").replace("play", "").strip()
+        await pc_bridge.execute_command("play_youtube", {"query": search_kw or "music"})
+        return {"status": "success", "response": "YouTube play ho raha hai.", "reply": "YouTube play ho raha hai."}
+
+    chat_groq = ChatGroq(model_name="llama-3.3-70b-versatile", temperature=0.5)
+    response_text = await generate_rian_response(user_id=request.user_id, user_query=q, llm_instance=chat_groq)
+    return {
+        "status": "success",
+        "user_id": request.user_id,
+        "response": response_text,
+        "reply": response_text,
+        "text": response_text
+    }
 
 @app.post("/api/biometrics/verify")
 async def verify_biometrics(request: BiometricsRequest):
@@ -353,12 +363,11 @@ class PCBridgeManager:
 
     async def execute_command(self, action: str, params: dict) -> dict:
         if not self.connected_pc:
-            return {"status": "error", "message": "Laptop Bridge connected nahi hai."}
+            return {"status": "error", "message": "Laptop Bridge offline."}
         try:
             self._resp_future = asyncio.get_running_loop().create_future()
             await self.connected_pc.send_text(json.dumps({"action": action, "params": params}))
-            res = await asyncio.wait_for(self._resp_future, timeout=25.0)
-            return res
+            return await asyncio.wait_for(self._resp_future, timeout=25.0)
         except Exception as e:
             return {"status": "error", "message": str(e)}
         finally:
@@ -385,7 +394,7 @@ async def pc_bridge_route(websocket: WebSocket):
             await pc_bridge.handle_response(data)
     except WebSocketDisconnect:
         pc_bridge.disconnect()
-    except Exception as e:
+    except Exception:
         pc_bridge.disconnect()
 
 # ==========================================
@@ -410,17 +419,12 @@ async def websocket_telemetry(websocket: WebSocket):
                 continue
 
             q_low = query.lower()
-
-            # Direct Screen Vision Intercept
             if any(k in q_low for k in ["screen", "dekh", "dekho", "kya khula", "kya chal raha"]):
-                await websocket.send_json({"type": "log", "log": query})
-                await websocket.send_json({"type": "state", "state_text": "ANALYZING SCREEN..."})
                 vision_out = pc_tools.run_screen_vision(query)
+                await websocket.send_json({"type": "log", "log": query})
                 await websocket.send_json({"type": "response", "reply": vision_out, "text": vision_out})
-                await websocket.send_json({"type": "state", "state_text": "LISTENING... (Continuous Stream Active)"})
                 continue
 
-            # Quick Desktop Action Hooks
             if "notepad" in q_low:
                 await pc_bridge.execute_command("launch_target", {"target": "notepad"})
                 await websocket.send_json({"type": "log", "log": query})
@@ -433,43 +437,13 @@ async def websocket_telemetry(websocket: WebSocket):
                 await websocket.send_json({"type": "response", "reply": "YouTube play ho raha hai."})
                 continue
 
-            # --- DEDUPLICATION SHIELD ---
-            req_id = payload.get("request_id")
-            now = time.time()
-            for r_id, t_stamp in list(processed_requests.items()):
-                if now - t_stamp > 10.0:
-                    processed_requests.pop(r_id, None)
-
-            if req_id and req_id in processed_requests:
-                continue
-
-            if req_id:
-                processed_requests[req_id] = now
-
-            # Step 1: Echo User Input to HUD Log
             await websocket.send_json({"type": "log", "log": query})
-            await websocket.send_json({
-                "type": "state",
-                "state_text": "THINKING...",
-            })
+            await websocket.send_json({"type": "state", "state_text": "THINKING..."})
 
-            # Step 2: Context-Aware Autonomous Generation
-            response_text = await generate_rian_response(
-                user_id=user_id,
-                user_query=query,
-                llm_instance=chat_groq
-            )
+            response_text = await generate_rian_response(user_id=user_id, user_query=query, llm_instance=chat_groq)
 
-            # Step 3: Broadcast Response and Set Active Listener State
-            await websocket.send_json({
-                "type": "response",
-                "reply": response_text,
-                "text": response_text
-            })
-            await websocket.send_json({
-                "type": "state",
-                "state_text": "LISTENING... (Continuous Stream Active)",
-            })
+            await websocket.send_json({"type": "response", "reply": response_text, "text": response_text})
+            await websocket.send_json({"type": "state", "state_text": "LISTENING... (Continuous Stream Active)"})
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception as e:
@@ -537,13 +511,13 @@ async def serve_master_ui():
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>J.I.V.A. / R.I.A.N. Neural Interface</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; user-select: none; }
         body { background: #000308; color: #00e5ff; overflow: hidden; height: 100vh; width: 100vw; position: relative; }
-        #canvas3d { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        #canvas3d { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; cursor: pointer; }
 
         .hud-glass {
             background: rgba(3, 15, 29, 0.75);
@@ -611,18 +585,18 @@ async def serve_master_ui():
             border: 1px solid rgba(0, 255, 170, 0.5);
         }
 
-        @media (max-width: 768px) {
-            body { overflow-y: auto !important; }
+        @media screen and (max-width: 768px) {
+            body { overflow-y: auto !important; display: flex; flex-direction: column; }
             .desktop-status, .desktop-diagnostics, .desktop-logs, .desktop-bottom-bar, .memory-badge {
                 position: relative !important; top: auto !important; left: auto !important;
-                right: auto !important; bottom: auto !important; width: 95% !important;
-                margin: 10px auto !important; transform: none !important;
+                right: auto !important; bottom: auto !important; width: 100% !important;
+                margin: 6px 0 !important; transform: none !important;
             }
-            #canvas3d { height: 260px !important; position: relative !important; }
+            #canvas3d { height: 250px !important; position: relative !important; }
         }
     </style>
 </head>
-<body onclick="engageContinuousVoice()">
+<body onclick="handleStartInteraction()">
     <canvas id="canvas3d"></canvas>
 
     <div class="hud-glass desktop-status">
@@ -662,46 +636,17 @@ async def serve_master_ui():
         <div class="status-headline" id="desktopStatus">LISTENING... (Continuous Stream Active)</div>
         <div class="input-row">
             <input type="text" id="userInput" class="hud-input" placeholder="Type or speak continuous command..." autocomplete="off" />
-            <button class="hud-btn" id="sendBtn">Send</button>
+            <button class="hud-btn" id="sendBtn" onclick="sendPrompt()">Send</button>
         </div>
     </div>
 
     <script>
-        let ws;
         let voiceStarted = false;
-
-        function connectSocket() {
-            const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
-            ws = new WebSocket(protocol + window.location.host + "/ws/telemetry");
-
-            ws.onmessage = function(e) {
-                const packet = JSON.parse(e.data);
-                const logBox = document.getElementById("desktopLogStream");
-
-                if (packet.type === "log" && logBox) {
-                    logBox.innerHTML += `<div style="color:#ffffff; margin: 4px 0;">[USER] ${packet.log}</div>`;
-                    logBox.scrollTop = logBox.scrollHeight;
-                }
-                if (packet.type === "response") {
-                    vocalizeOutput(packet.reply || packet.text);
-                    if (logBox) {
-                        logBox.innerHTML += `<div style="color:#00ffaa; margin: 4px 0;">[RIAN] ${packet.reply || packet.text}</div>`;
-                        logBox.scrollTop = logBox.scrollHeight;
-                    }
-                }
-                if (packet.type === "state") {
-                    const status = document.getElementById("desktopStatus");
-                    if (status) status.innerText = packet.state_text;
-                }
-            };
-
-            ws.onclose = () => setTimeout(connectSocket, 2000);
-        }
 
         function vocalizeOutput(text) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
-                let clean = text.replace(/\\[.*?\\]/g, '').replace(/[*#_`]/g, '').trim();
+                let clean = text.replace(/\[.*?\]/g, '').replace(/[*#_`]/g, '').trim();
                 const utt = new SpeechSynthesisUtterance(clean);
                 utt.rate = 1.0;
                 utt.lang = 'hi-IN';
@@ -712,24 +657,56 @@ async def serve_master_ui():
             }
         }
 
-        function engageContinuousVoice() {
+        function handleStartInteraction() {
             if (voiceStarted) return;
             voiceStarted = true;
-            vocalizeOutput("Systems online. Listening for commands.");
+            vocalizeOutput("System R.I.A.N. online. Direct neural link established, Manish.");
+            const logBox = document.getElementById("desktopLogStream");
+            if (logBox) {
+                logBox.innerHTML += `<div style="color:#00ffaa; margin: 4px 0;">[RIAN] System R.I.A.N. is online and ready.</div>`;
+                logBox.scrollTop = logBox.scrollHeight;
+            }
         }
 
-        function sendPrompt() {
+        async function sendPrompt() {
             const input = document.getElementById("userInput");
             if (!input || !input.value.trim()) return;
             const query = input.value.trim();
             input.value = "";
 
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ query: query, user_id: "Manish" }));
+            handleStartInteraction();
+
+            const logBox = document.getElementById("desktopLogStream");
+            const statusLabel = document.getElementById("desktopStatus");
+
+            if (logBox) {
+                logBox.innerHTML += `<div style="color:#ffffff; margin: 4px 0;">[USER] ${query}</div>`;
+                logBox.scrollTop = logBox.scrollHeight;
+            }
+            if (statusLabel) statusLabel.innerText = "THINKING...";
+
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query, text: query, user_id: "Manish" })
+                });
+                const data = await res.json();
+                const reply = data.response || data.reply || data.text || "Command executed.";
+
+                if (logBox) {
+                    logBox.innerHTML += `<div style="color:#00ffaa; margin: 4px 0;">[RIAN] ${reply}</div>`;
+                    logBox.scrollTop = logBox.scrollHeight;
+                }
+                if (statusLabel) statusLabel.innerText = "LISTENING... (Continuous Stream Active)";
+
+                vocalizeOutput(reply);
+            } catch (err) {
+                console.error("Chat error:", err);
+                if (statusLabel) statusLabel.innerText = "COMMUNICATION ERROR";
             }
         }
 
-        document.getElementById("sendBtn").addEventListener("click", sendPrompt);
         document.getElementById("userInput").addEventListener("keydown", function(e) {
             if (e.key === "Enter") {
                 e.preventDefault();
@@ -792,7 +769,6 @@ async def serve_master_ui():
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Diagnostic stream simulation
         const liveTests = [
             "Vector Memory Pulse -> 3120 Vectors Synced",
             "Agent Tool Schema Integrity -> 16 Tools Active",
@@ -817,18 +793,70 @@ async def serve_master_ui():
                 streamBox.scrollTop = streamBox.scrollHeight;
             }
         }, 1800);
-
-        window.onload = function() {
-            connectSocket();
-        };
     </script>
 </body>
 </html>"""
     return HTMLResponse(content=html_content)
 
 # ==========================================
+# CLI DUAL-INTERACTIVE SYSTEM
+# ==========================================
+async def terminal_main() -> None:
+    audio = AudioService()
+    proactive_brain = None
+    try:
+        await assistant_instance.start()
+        print("\n==============================")
+        print("    R.I.A.N. MASTER ONLINE    ")
+        print("==============================")
+        proactive_brain = ProactiveMonitor(llm=assistant_instance.llm, api_key=settings.groq_api_key)
+        proactive_brain.start()
+        try:
+            await audio.speak("Hello sir, mai RIAN hoon. Mai aapki kya madad karne ke liye ready hu")
+        except Exception:
+            pass
+
+        while True:
+            try:
+                print("\n[1] Voice Command 🎤 | [2] Type Command ⌨️ | [3] Exit ❌")
+                mode = input("Select Mode (1/2/3): ").strip()
+                if mode == "3":
+                    break
+                elif mode == "1":
+                    query = await audio.listen()
+                    if not query:
+                        continue
+                    print(f"👤 You (Voice) >> {query}")
+                elif mode == "2":
+                    query = input("\n👤 You >> ").strip()
+                    if query.lower() in ["exit", "quit", "bye"]:
+                        break
+                    if not query:
+                        continue
+                else:
+                    print("Invalid option. Please choose 1, 2, or 3.")
+                    continue
+
+                response = await assistant_instance.process_query(query)
+                print(f"\n🤖 R.I.A.N. >> {response}")
+                try:
+                    await audio.speak(response)
+                except Exception:
+                    pass
+            except KeyboardInterrupt:
+                break
+    finally:
+        if proactive_brain:
+            proactive_brain.stop()
+        await assistant_instance.stop()
+
+# ==========================================
 # MAIN EXECUTION ENTRY POINT
 # ==========================================
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=False, workers=1)
+    if len(sys.argv) > 1 and sys.argv[1] == "--cli":
+        asyncio.run(terminal_main())
+    else:
+        import uvicorn
+        uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=False, workers=1)
+EOF
