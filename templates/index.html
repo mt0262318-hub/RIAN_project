@@ -165,5 +165,57 @@
 })();
 </script>
 
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+    const inputEl = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    
+    function speakHindi(text) {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.resume();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.rate = 1.0;
+        utter.lang = 'hi-IN';
+        window.speechSynthesis.speak(utter);
+    }
+
+    async function sendQuery() {
+        if (!inputEl) return;
+        const val = inputEl.value.trim();
+        if (!val) return;
+        
+        // Update input display
+        inputEl.value = '';
+        
+        try {
+            const resp = await fetch('/api/command', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({text: val})
+            });
+            const data = await resp.json();
+            const replyText = data.response || data.text || "Command executed.";
+            
+            // Clear processing text across UI
+            document.querySelectorAll('*').forEach(el => {
+                if (el.children.length === 0 && el.textContent.includes('Processing neural')) {
+                    el.textContent = "READY";
+                }
+            });
+
+            // Speak response
+            speakHindi(replyText);
+        } catch(err) {
+            console.error(err);
+        }
+    }
+
+    if (sendBtn) sendBtn.onclick = (e) => { e.preventDefault(); sendQuery(); };
+    if (inputEl) inputEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); sendQuery(); } };
+});
+</script>
+
 </body>
 </html>
