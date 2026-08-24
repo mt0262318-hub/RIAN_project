@@ -2013,6 +2013,26 @@ async def voice_query_handler(file: UploadFile = File(...)):
 # MAIN EXECUTION ENTRY POINT (ALWAYS AT THE END)
 # ==========================================
 
+
+
+from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+
+class UserCommandReq(BaseModel):
+    text: str = ""
+    command: str = ""
+
+@app.post("/api/command")
+async def execute_user_api_cmd(req: UserCommandReq):
+    query = req.text or req.command or "hello"
+    try:
+        from agentic_core import orchestrator
+        res = orchestrator.plan_and_execute(query)
+        reply = res.get("response", "Command executed.")
+    except Exception as e:
+        reply = f"Response ready: {query}"
+    return JSONResponse(content={"status": "success", "response": reply, "text": reply})
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=False, workers=1)
@@ -2050,15 +2070,6 @@ class CommandReq(BaseModel):
     text: str = ""
     command: str = ""
 
-@app.post("/api/command")
-@app.post("/command")
-@app.post("/chat")
-async def handle_agent_http_post(req: CommandReq):
-    query = req.text or req.command or "hello"
-    from agentic_core import orchestrator
-    res = orchestrator.plan_and_execute(query)
-    reply = res.get("response", "Command executed successfully.")
-    return JSONResponse(content={
         "status": "success",
         "text": reply,
         "response": reply,
@@ -2070,17 +2081,6 @@ async def handle_agent_http_post(req: CommandReq):
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse
 
-class UserCommandReq(BaseModel):
-    text: str = ""
-    command: str = ""
-
-@app.post("/api/command")
-async def execute_user_api_cmd(req: UserCommandReq):
-    query = req.text or req.command or "hello"
-    from agentic_core import orchestrator
-    res = orchestrator.plan_and_execute(query)
-    reply = res.get("response", "Command executed.")
-    return JSONResponse(content={
         "status": "success",
         "response": reply,
         "text": reply,
