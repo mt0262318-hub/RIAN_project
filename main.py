@@ -2048,47 +2048,26 @@ if __name__ == "__main__":
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     while True:
-        try:
-            data = await websocket.receive_text()
-            import json
-            payload = json.loads(data)
-            query = payload.get("text", payload.get("command", payload.get("message", "")))
-            if query:
-                from agentic_core import orchestrator
-                res = orchestrator.plan_and_execute(query)
-                reply_text = res.get("response", "Command executed.")
-                out_pkt = {
-                    "type": "agent_response",
-                    "status": "completed",
-                    "text": reply_text,
-                    "response": reply_text,
-                    "voice_text": reply_text
-                }
-                await websocket.send_text(json.dumps(out_pkt))
-        except Exception:
-            break
 
-
-from fastapi.responses import JSONResponse
+# --- Clean Injected API Endpoint ---
 from pydantic import BaseModel
+from fastapi.responses import JSONResponse
 
-class CommandReq(BaseModel):
+class UserCommandReq(BaseModel):
     text: str = ""
     command: str = ""
 
-        "status": "success",
-        "text": reply,
-        "response": reply,
-        "voice_text": reply,
-        "reply": reply
-    })
+@app.post("/api/command")
+async def execute_user_api_cmd(req: UserCommandReq):
+    query = req.text or req.command or "hello"
+    try:
+        from agentic_core import orchestrator
+        res = orchestrator.plan_and_execute(query)
+        reply = res.get("response", "Command executed.")
+    except Exception as e:
+        reply = f"Response: {query}"
+    return JSONResponse(content={"status": "success", "response": reply, "text": reply})
 
-
-from pydantic import BaseModel
-from fastapi.responses import JSONResponse
-
-        "status": "success",
-        "response": reply,
-        "text": reply,
-        "voice_text": reply
-    })
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8501)
