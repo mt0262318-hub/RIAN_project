@@ -1,54 +1,3 @@
-
-from agentic_core import orchestrator
-
-async def execute_agent_command(user_text: str):
-    res = orchestrator.plan_and_execute(user_text)
-    return {
-        "text": res["response"],
-        "response": res["response"],
-        "voice_text": res.get("voice_text", res["response"]),
-        "status": "completed",
-        "agent": res.get("role")
-    }
-
-
-async def execute_agent_command(user_text: str):
-    p = user_text.lower().strip()
-    if "joke" in p:
-        ans = "Pappu ne dost se pucha: Zindagi me kitna aage badhna chahiye? Dost bola: Itna ki peeche mudkar dekhna na pade, bas wiper chalate raho!"
-    elif "who are you" in p or "kaun ho" in p:
-        ans = "Main RIAN hoon, aapka autonomous AI assistant."
-    elif "hello" in p or "hi" in p:
-        ans = "Haan Manish, main online hoon aur aawaz sun raha hoon."
-    elif "youtube" in p:
-        ans = "Opening YouTube."
-    elif "whatsapp" in p:
-        ans = "Opening WhatsApp."
-    else:
-        ans = f"Aapka command '{user_text}' execute kar diya hai."
-    return {"text": ans, "response": ans, "voice_text": ans, "status": "completed"}
-
-
-try:
-    from services.direct_dialogue_engine import get_dialogue_reply
-except Exception:
-    def get_dialogue_reply(p): return f"Ji Manish, command {p} processed."
-
-
-async def process_user_command_fast(text: str):
-    t = text.lower()
-    if "joke" in t:
-        return "Teacher ne pucha sabse bada fool kaun? Student ne bola: Jo bina padhe exam de!"
-    if "whatsapp" in t:
-        return "Opening WhatsApp bridge now."
-    if "telegram" in t:
-        return "Opening Telegram bridge now."
-    if "youtube" in t:
-        return "Opening YouTube now."
-    if "notepad" in t:
-        return "Opening Notepad."
-    return f"Ji Manish, aapka command '{text}' execute kar diya hai."
-
 from services.ingress_router import ingress_bp
 from tools.vault_tool_schema import VAULT_TOOLS, handle_vault_call
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -308,25 +257,6 @@ class RIANAssistant:
 # ==========================================
 assistant_instance = RIANAssistant()
 app = FastAPI(title="J.I.V.A. / R.I.A.N. Autonomous AI Master")
-
-from pydantic import BaseModel
-from fastapi.responses import JSONResponse
-
-class UserCommandReq(BaseModel):
-    text: str = ""
-    command: str = ""
-
-@app.post("/api/command")
-async def execute_user_api_cmd(req: UserCommandReq):
-    query = req.text or req.command or "hello"
-    try:
-        from agentic_core import orchestrator
-        res = orchestrator.plan_and_execute(query)
-        reply = res.get("response", "Command executed.")
-    except Exception as e:
-        reply = f"Response: {query}"
-    return JSONResponse(content={"status": "success", "response": reply, "text": reply})
-
 app.include_router(ingress_bp)
 
 
@@ -419,46 +349,90 @@ async def get_system_status():
 # ==========================================
 # WEBSOCKET REALTIME TELEMETRY STREAM
 # ==========================================
-
 @app.websocket("/ws/telemetry")
-async def ws_telemetry_loop(websocket: WebSocket):
-    await websocket.accept()
-    import json, asyncio
-    from agentic_core import orchestrator
-
-    async def log_heartbeat():
+async def websocket_telemetry(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
         while True:
-            try:
-                await websocket.send_text(json.dumps({"type": "telemetry", "status": "active"}))
-                await asyncio.sleep(2)
-            except Exception:
-                break
-
-    asyncio.create_task(log_heartbeat())
-
-    while True:
-        try:
             data = await websocket.receive_text()
-            user_text = ""
-            try:
-                pkt = json.loads(data)
-                user_text = pkt.get("text") or pkt.get("command") or pkt.get("message") or ""
-            except Exception:
-                user_text = data.strip()
 
-            if user_text:
-                res = orchestrator.plan_and_execute(user_text)
-                reply = res.get("response", "Command processed.")
-                pkt_out = {
-                    "type": "agent_response",
-                    "text": reply,
-                    "response": reply,
-                    "voice_text": reply,
-                    "status": "ready"
-                }
-                await websocket.send_text(json.dumps(pkt_out))
-        except Exception:
-            break
+            # Direct Screen Vision Intercept
+            _user_raw = str(user_text if 'user_text' in locals() else (user_input if 'user_input' in locals() else (data.get("message", "") if isinstance(locals().get("data"), dict) else "")))
+            if any(k in _user_raw.lower() for k in ["screen", "dekh", "dekho", "kya khula", "kya chal raha"]):
+                import tools.pc_tools as pc_tools
+                print(f"[VISION EXECUTING] Capturing screen for: {_user_raw}")
+                vision_out = pc_tools.run_screen_vision(_user_raw)
+                try:
+                    await websocket.send_json({"type": "response", "message": vision_out, "status": "completed"})
+                except Exception:
+                    pass
+                continue
+            payload = json.loads(data)
+            query = payload.get("query", payload.get("text", "")).strip()
+            q_low = query.lower()
+            if "notepad" in q_low:
+                await pc_bridge.execute_command("launch_target", {"target": "notepad"})
+                await websocket.send_json({"type": "response", "response": "Notepad open kar diya hai."})
+                continue
+            elif "youtube" in q_low:
+                search_kw = q_low.replace("open", "").replace("youtube", "").replace("play", "").strip()
+                await pc_bridge.execute_command("play_youtube", {"query": search_kw or "music"})
+                await websocket.send_json({"type": "response", "response": "YouTube play ho raha hai."})
+                continue
+            user_id = payload.get("user_id", "web_user_01")
+
+            if not query:
+                continue
+
+            # --- DEDUPLICATION SHIELD (Loop & Echo Preventer) ---
+            req_id = payload.get("request_id")
+            now = time.time()
+            for r_id, t_stamp in list(processed_requests.items()):
+                if now - t_stamp > 10.0:
+                    processed_requests.pop(r_id, None)
+
+            if req_id and req_id in processed_requests:
+                continue
+
+            if req_id:
+                processed_requests[req_id] = now
+
+            # Step 1: Echo User Input to HUD Log
+            await websocket.send_json({"type": "log", "log": f"Voice/Text Input: {query}"})
+            await websocket.send_json({
+                "type": "state",
+                "agent_status": "PROCESSING",
+                "state_text": "Processing neural command...",
+            })
+
+            # Step 2: Autonomous Context-Aware Execution with Memory
+            if 'chat_groq' not in locals() and 'chat_groq' not in globals():
+                from langchain_groq import ChatGroq
+                chat_groq = ChatGroq(model_name="qwen/qwen3.6-27b", temperature=0.5)
+
+            response_text = await generate_rian_response(
+                user_id=user_id,
+                user_query=query,
+                llm_instance=chat_groq
+            )
+
+            # Step 3: Broadcast Response and Set Active Listener State
+            await websocket.send_json({
+                "type": "response",
+                "reply": response_text,
+                "text": response_text
+            })
+            await websocket.send_json({
+                "type": "state",
+                "agent_status": "ACTIVE",
+                "state_text": "LISTENING... (Continuous Stream Active)",
+            })
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception as e:
+        logger.error(f"WebSocket Error: {e}")
+        manager.disconnect(websocket)
+
 
 @app.get("/")
 def home():
@@ -1841,60 +1815,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-
-<script>
-window.addEventListener('DOMContentLoaded', () => {
-    const input = document.querySelector('input[type="text"]') || document.getElementById('user-input') || document.querySelector('input');
-    const btn = document.querySelector('button') || document.getElementById('send-btn');
-    const statusLabel = document.querySelector('.status-text') || document.getElementById('status') || document.querySelector('div[id*="status"]');
-
-    function speakText(text) {
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            const utter = new SpeechSynthesisUtterance(text);
-            utter.lang = 'hi-IN';
-            utter.rate = 1.0;
-            window.speechSynthesis.speak(utter);
-        }
-    }
-
-    async function sendCommand() {
-        if (!input || !input.value.trim()) return;
-        const query = input.value.trim();
-        input.value = '';
-        if (statusLabel) statusLabel.innerText = "THINKING...";
-
-        try {
-            const res = await fetch('/api/command', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({text: query, command: query})
-            });
-            const data = await res.json();
-            const reply = data.response || data.text || "Command executed.";
-            if (statusLabel) statusLabel.innerText = "SPEAKING: " + reply.substring(0, 30) + "...";
-            speakText(reply);
-        } catch(e) {
-            console.error(e);
-            if (statusLabel) statusLabel.innerText = "ERROR PROCESSING";
-        }
-    }
-
-    if (btn) {
-        btn.onclick = (e) => { e.preventDefault(); sendCommand(); };
-    }
-    if (input) {
-        input.onkeydown = (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                sendCommand();
-            }
-        };
-    }
-});
-</script>
 </body>
-
 </html>"""
     return HTMLResponse(content=html_content)
 
@@ -2084,37 +2005,10 @@ async def voice_query_handler(file: UploadFile = File(...)):
 # ==========================================
 # MAIN EXECUTION ENTRY POINT (ALWAYS AT THE END)
 # ==========================================
-
-# --- Clean WebSocket Handler ---
-@app.websocket("/ws")
-
-# --- Clean WebSocket Handler ---
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    try:
-        while True:
-            data = await websocket.receive_text()
-            await websocket.send_text(f"Echo: {data}")
-    except Exception:
-        pass
-
-# --- RIAN Command API Endpoint ---
-class UserCommandReq(BaseModel):
-    text: str = ""
-    command: str = ""
-
-@app.post("/api/command")
-async def execute_user_api_cmd(req: UserCommandReq):
-    query = req.text or req.command or "hello"
-    try:
-        from agentic_core import orchestrator
-        res = orchestrator.plan_and_execute(query)
-        reply = res.get("response", "Command executed.")
-    except Exception as e:
-        reply = f"Response: {query}"
-    return JSONResponse(content={"status": "success", "response": reply, "text": reply})
-
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=False, workers=1)
+    if len(sys.argv) > 1 and sys.argv[1] == "--cli":
+        asyncio.run(terminal_main())
+    else:
+        import uvicorn
+
+        uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=True)
