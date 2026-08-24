@@ -2032,27 +2032,18 @@ async def voice_query_handler(file: UploadFile = File(...)):
 # MAIN EXECUTION ENTRY POINT (ALWAYS AT THE END)
 # ==========================================
 
-
-
-from pydantic import BaseModel
-from fastapi.responses import JSONResponse
-
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=False, workers=1)
-
-
+# --- Clean WebSocket Handler ---
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    while True:
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await websocket.send_text(f"Echo: {data}")
+    except Exception:
+        pass
 
-# --- Clean Injected API Endpoint ---
-from pydantic import BaseModel
-from fastapi.responses import JSONResponse
-
+# --- RIAN Command API Endpoint ---
 class UserCommandReq(BaseModel):
     text: str = ""
     command: str = ""
@@ -2070,4 +2061,4 @@ async def execute_user_api_cmd(req: UserCommandReq):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8501)
+    uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=False, workers=1)
