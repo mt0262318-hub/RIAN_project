@@ -317,7 +317,7 @@ async def chat_with_rian(request: ChatRequest):
         await pc_bridge.execute_command("play_youtube", {"query": search_kw or "music"})
         return {"status": "success", "response": "YouTube play ho raha hai.", "reply": "YouTube play ho raha hai."}
 
-    chat_groq = ChatGroq(model_name="llama-3.3-70b-versatile", temperature=0.5)
+    chat_groq = ChatGroq(model_name="llama-3.1-8b-instant", temperature=0.5)
     response_text = await generate_rian_response(user_id=request.user_id, user_query=q, llm_instance=chat_groq)
     return {
         "status": "success",
@@ -403,7 +403,7 @@ async def pc_bridge_route(websocket: WebSocket):
 async def websocket_telemetry(websocket: WebSocket):
     await manager.connect(websocket)
     try:
-        chat_groq = ChatGroq(model_name="llama-3.3-70b-versatile", temperature=0.5)
+        chat_groq = ChatGroq(model_name="llama-3.1-8b-instant", temperature=0.5)
         while True:
             raw_data = await websocket.receive_text()
             try:
