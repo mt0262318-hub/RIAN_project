@@ -1,0 +1,4 @@
+[
+    "RULE: Import the 'requests' library before using it.",
+    "RULE: Only give concise, directly relevant answers to the user\u2019s explicit question and avoid unsolicited, overly detailed plans or generic advice."
+]

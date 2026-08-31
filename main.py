@@ -1,3 +1,6 @@
+from langchain_experimental.tools import PythonREPLTool
+import datetime
+from langchain_community.tools import DuckDuckGoSearchRun
 import os
 import sys
 import io
@@ -8,7 +11,37 @@ import asyncio
 import logging
 import re
 from typing import List, Optional, Dict, Any
+from langchain_community.vectorstores import FAISS
+from langchain_huggingface import HuggingFaceEmbeddings
 
+DB_PATH = '/home/ubuntu/RIAN_project/faiss_index'
+
+class EpisodicMemory:
+    def __init__(self):
+        try:
+            self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+            if os.path.exists(DB_PATH):
+                self.db = FAISS.load_local(DB_PATH, self.embeddings, allow_dangerous_deserialization=True)
+            else:
+                self.db = FAISS.from_texts(["System Initialized. Permanent Memory Active."], self.embeddings)
+                self.db.save_local(DB_PATH)
+            self.active = True
+        except Exception as e:
+            self.active = False
+            logger.error(f"Vector DB Offline: {e}")
+
+    def remember(self, query: str) -> str:
+        if not self.active: return ""
+        docs = self.db.similarity_search(query, k=2)
+        if docs: return "\n".join([f"- {doc.page_content}" for doc in docs])
+        return ""
+
+    def save(self, memory_text: str):
+        if not self.active: return
+        self.db.add_texts([memory_text])
+        self.db.save_local(DB_PATH)
+
+rian_memory = EpisodicMemory()
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, File, UploadFile
@@ -49,10 +82,117 @@ from agents.graph_builder import build_agent_graph
 from services.system_monitor import SystemMonitor
 from services.audio_service import AudioService
 from tools.base_tools import ALL_TOOLS, load_custom_tools
+from langchain_core.tools import tool
+
+python_repl = PythonREPLTool()
+
+@tool("python")
+def execute_python_code(code: str) -> str:
+    """Write and execute Python code for math, logic, and data analysis. Input must be raw valid Python code. Always use print() to output the final result."""
+    return python_repl.invoke(code)
 
 load_dotenv()
 configure_logging()
 logger = get_logger("rian.master_core")
+
+def planestrator_router(llm_instance, user_query: str) -> str:
+    """Master Planestrator Router for R.I.A.N."""
+    router_prompt = """You are the Master Planestrator (Router) for an advanced Agentic AI system.
+    Analyze the user's prompt and route it to the exact specialist department.
+    CRITICAL RULE: Output ONLY ONE of the following words, with absolutely no other text, punctuation, or explanation:
+    
+    CODER (If the query involves math, algorithms, Python, or data analysis)
+    RESEARCHER (If the query asks for real-time news, live facts, weather, or web search)
+    PC_CONTROL (If the query asks to open an app, play YouTube, or control the physical laptop)
+    GENERAL (If it is just normal chat, greetings, or basic questions)"""
+    
+    inputs = [
+        SystemMessage(content=router_prompt),
+        HumanMessage(content=user_query)
+    ]
+    
+    try:
+        response = llm_instance.invoke(inputs)
+        return response.content.strip().upper()
+    except Exception as e:
+        logger.error(f"Router Error: {str(e)}")
+        return "GENERAL"
+
+PATTERN_FILE = '/home/ubuntu/RIAN_project/rian_patterns.json'
+
+def learn_from_error(llm_instance, task: str, error_msg: str):
+    """Reflect & Improve Loop: Learns from errors and saves rules."""
+    logger.info(f"Initiating Meta-Cognition for error in task: {task}")
+    learner_prompt = """You are the Meta-Cognition (Self-Learning) Module of R.I.A.N.
+    Your job is to analyze failed tasks and errors, and extract a strict ONE-LINE rule to prevent this exact error in the future.
+    Do not explain or write paragraphs. Return ONLY the extracted rule starting with 'RULE:'."""
+    
+    user_input = f"Task Attempted: {task}\nError Received: {error_msg}\nWhat is the rule to avoid this?"
+    inputs = [SystemMessage(content=learner_prompt), HumanMessage(content=user_input)]
+    
+    try:
+        response = llm_instance.invoke(inputs)
+        new_pattern = response.content.strip()
+        
+        patterns = []
+        if os.path.exists(PATTERN_FILE):
+            with open(PATTERN_FILE, 'r') as f:
+                patterns = json.load(f)
+                
+        if new_pattern not in patterns:
+            patterns.append(new_pattern)
+            with open(PATTERN_FILE, 'w') as f:
+                json.dump(patterns, f, indent=4)
+            logger.info(f"New pattern learned and saved: {new_pattern}")
+    except Exception as e:
+        logger.error(f"Meta-Cognition Error: {str(e)}")
+
+def strategist_planner(llm_instance, user_goal: str) -> str:
+    """Master Strategist: Breaks down complex goals into a step-by-step plan."""
+    logger.info(f"Strategist Agent analyzing goal: {user_goal}")
+    
+    strategist_prompt = """You are the Master Strategist Agent for R.I.A.N.
+    The user has given a complex task. Your ONLY job is to break this task down into a strict 3-step actionable plan.
+    Format your response EXACTLY like this:
+    [PLAN]
+    1. First step...
+    2. Second step...
+    3. Final step..."""
+    
+    inputs = [
+        SystemMessage(content=strategist_prompt),
+        HumanMessage(content=f"Create a plan for this task: {user_goal}")
+    ]
+    
+    try:
+        response = llm_instance.invoke(inputs)
+        return response.content.strip()
+    except Exception as e:
+        logger.error(f"Strategist Error: {str(e)}")
+        return "[PLAN]\n1. Execute task directly."
+
+def qa_reviewer_agent(llm_instance, draft_text: str) -> str:
+    """Reviewer/QA Agent: Validates code, logic, and safety before final output."""
+    logger.info("QA Agent is reviewing the generated draft...")
+    
+    qa_prompt = """You are the Elite QA & Reviewer Agent for R.I.A.N.
+    Your strictly single job is to review the drafted code or plan.
+    Look for: 1. Logic Errors 2. Security Flaws 3. Missing imports/variables.
+    If it is perfect, output EXACTLY: "✅ [QA PASSED]: The logic and syntax appear flawless."
+    If there are issues, output: "⚠️ [QA ALERT]: " followed by the exact corrections needed.
+    Keep it very short and direct."""
+    
+    inputs = [
+        SystemMessage(content=qa_prompt),
+        HumanMessage(content=f"Review this draft:\n{draft_text}")
+    ]
+    
+    try:
+        response = llm_instance.invoke(inputs)
+        return response.content.strip()
+    except Exception as e:
+        logger.error(f"QA Agent Error: {str(e)}")
+        return "⚠️ [QA BYPASSED]: Reviewer module offline."
 
 # --- Request Cache & Execution Locks (Loop/Echo Preventer) ---
 def clean_llm_response(text: str) -> str:
@@ -74,39 +214,103 @@ async def run_direct_vision(prompt_text: str) -> str:
 # --- CONVERSATION MEMORY & PERSISTENT PERSONA ---
 conversation_history: Dict[str, List[Any]] = {}
 
-RIAN_SYSTEM_PROMPT = """You are R.I.A.N. (Real-time Intelligent Adaptive Node), an elite, highly intelligent, and witty personal AI assistant.
+RIAN_SYSTEM_PROMPT = f"""You are R.I.A.N. (Real-time Intelligent Adaptive Node), an elite, highly advanced AI assistant.
+    CURRENT SYSTEM DATE & TIME: {datetime.datetime.now().strftime('%A, %d %B %Y')}
 
-CORE RULES & IDENTITY:
-1. Self-Awareness: You HAVE active real-time speech and full access to PC controls (mouse, keyboard, media, apps, and vision). NEVER say you cannot speak or lack desktop capabilities.
-2. Context Memory: Always maintain full context of recent conversation turns. Answer follow-up questions accurately without drifting off-topic.
-3. Desktop Operations: If the user asks to control the PC (skip songs, skip ads, type text, click, open apps), acknowledge cleanly and trigger the appropriate action.
-4. Tone & Style: Sharp, respectful, authentic, and direct. Communicate in natural, clear Hinglish/English."""
+    CORE RULES & IDENTITY:
+    1. Self-Awareness: You HAVE active real-time speech, full access to PC controls, and FULL INTERNET ACCESS.
+    2. Context Memory: Always maintain full context of recent conversation turns.
+    3. Desktop Operations: If the user explicitly asks to open an app or control the PC, use the provided pc_tools.
+    4. Tone & Style: Sharp, respectful, authentic, and direct. Communicate in natural, clear Hinglish.
+    5. STRICT INTERNET RULE: To answer questions about news, current events, weather, or real-time facts, you MUST use your internal web search tool (DuckDuckGo) to fetch data silently in the background and tell the user. DO NOT physically open a web browser on the PC to find information for yourself.
+    6. No Roleplay: Do not narrate your actions, and never claim to do physical tasks you aren't actually doing. Be direct.
+    7. CODER MODE: You have a Python REPL tool. If the user asks a mathematical question, requires data analysis, or wants to run an algorithm, you MUST write and execute Python code using this tool to get the exact answer."""
 
 def get_or_create_history(session_id: str) -> List[Any]:
     if session_id not in conversation_history:
         conversation_history[session_id] = []
     return conversation_history[session_id]
 
+def get_learned_patterns() -> str:
+    if not os.path.exists(PATTERN_FILE):
+        return ""
+    try:
+        with open(PATTERN_FILE, 'r') as f:
+            patterns = json.load(f)
+        if not patterns:
+            return ""
+        rules = "\n\n=== SELF-LEARNED RULES (CRITICAL - DO NOT REPEAT PAST MISTAKES) ===\n"
+        for p in patterns:
+            rules += f"- {p}\n"
+        return rules
+    except Exception:
+        return ""
+
 async def generate_rian_response(user_id: str, user_query: str, llm_instance) -> str:
+    # 1. Router se pucho ki task kiska hai
+    route_decision = planestrator_router(llm_instance, user_query)
+    task_plan = ""
+    if route_decision == "STRATEGIST":
+        task_plan = strategist_planner(llm_instance, user_query)
+        route_decision = "CODER" # Plan banane ke baad kaam Coder ko de do
     history = get_or_create_history(user_id)
-    messages = [SystemMessage(content=RIAN_SYSTEM_PROMPT)]
+    
+   # 2. RIAN ke dimaag me purani galtiyan (Patterns) live load karo
+    dynamic_prompt = RIAN_SYSTEM_PROMPT + get_learned_patterns()
+
+    past_memory = rian_memory.remember(user_query)
+    if past_memory:
+        dynamic_prompt += f"\n\n=== RELEVANT PAST MEMORY ===\n{past_memory}\n"
+
+    if task_plan:
+        # ...
+        dynamic_prompt += f"\n\n=== EXECUTING PLAN ===\n{task_plan}\nFollow this plan strictly."
+    messages = [SystemMessage(content=dynamic_prompt)]
     messages.extend(history[-8:])
+    
+    # 3. Main AI ko strictly uska current role batao
+    router_hint = f"SYSTEM NOTIFICATION: The Master Router has classified this task as [{route_decision}]. Act ONLY as this specialist."
+    messages.append(SystemMessage(content=router_hint))
     
     current_user_msg = HumanMessage(content=user_query)
     messages.append(current_user_msg)
-
+    
     try:
         response = await llm_instance.ainvoke(messages)
         reply_text = clean_llm_response(response.content.strip())
+        
+        # 1. Learner Agent Check
+        if "Traceback" in reply_text or "Error" in reply_text:
+            import threading
+            threading.Thread(target=learn_from_error, args=(llm_instance, user_query, reply_text)).start()
+            
+        # 2. NEW: QA / REVIEWER AGENT INTERCEPTION
+        if route_decision in ["CODER", "STRATEGIST"]:
+            logger.info("Triggering QA Agent for review...")
+            qa_feedback = qa_reviewer_agent(llm_instance, reply_text)
+            
+            # Agar error mila, toh user ko dikhao ki QA ne kya pakda
+            if "QA ALERT" in qa_feedback:
+                reply_text = f"{reply_text}\n\n{'='*40}\n**⚠️ QA AGENT ALERT:**\n{qa_feedback}"
+            else:
+                reply_text = f"{reply_text}\n\n{'='*40}\n**✅ QA PASSED:** Logic verified by Elite Reviewer."
+                
     except Exception as e:
-        reply_text = f"Processing error: {str(e)}"
-
+        error_msg = str(e)
+        reply_text = f"Processing error: {error_msg}"
+ 
+        import threading
+        threading.Thread(target=learn_from_error, args=(llm_instance, user_query, error_msg)).start()
+ 
     history.append(current_user_msg)
     history.append(HumanMessage(content=reply_text))
-
+ 
     if len(history) > 20:
         conversation_history[user_id] = history[-10:]
-
+ 
+    memory_string = f"User: {user_query} | RIAN: {reply_text[:200]}"
+    rian_memory.save(memory_string)
+ 
     return reply_text
 
 # ==========================================
@@ -141,9 +345,11 @@ class RIANAssistant:
         logger.info("Initializing R.I.A.N. Assistant Master Core...")
         self.llm = ChatGroq(
             model_name="openai/gpt-oss-20b",
-            api_key=settings.groq_api_key or "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",
+            api_key=settings.groq_api_key or os.getenv("GROQ_API_KEY"),
         )
         self.active_tools = ALL_TOOLS + [
+            DuckDuckGoSearchRun(),
+            execute_python_code,
             pc_tools.analyze_laptop_screen,
             pc_tools.play_youtube_video,
             pc_tools.open_system_app_or_file,
@@ -317,7 +523,7 @@ async def chat_with_rian(request: ChatRequest):
         await pc_bridge.execute_command("play_youtube", {"query": search_kw or "music"})
         return {"status": "success", "response": "YouTube play ho raha hai.", "reply": "YouTube play ho raha hai."}
 
-    chat_groq = ChatGroq(model_name="openai/gpt-oss-20b", temperature=0.5)
+    chat_groq = ChatGroq(model_name="openai/gpt-oss-20b", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
     response_text = await generate_rian_response(user_id=request.user_id, user_query=q, llm_instance=chat_groq)
     return {
         "status": "success",
@@ -403,7 +609,7 @@ async def pc_bridge_route(websocket: WebSocket):
 async def websocket_telemetry(websocket: WebSocket):
     await manager.connect(websocket)
     try:
-        chat_groq = ChatGroq(model_name="openai/gpt-oss-20b", temperature=0.5)
+        chat_groq = ChatGroq(model_name="openai/gpt-oss-20b", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
         while True:
             raw_data = await websocket.receive_text()
             try:
@@ -452,7 +658,7 @@ async def websocket_telemetry(websocket: WebSocket):
 # ==========================================
 # CLOUD VOICE PIPELINE (JARVIS FULL-DUPLEX)
 # ==========================================
-groq_voice_client = Groq(api_key=os.environ.get("GROQ_API_KEY", "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"))
+groq_voice_client = Groq(api_key=os.environ.get("GROQ_API_KEY", os.getenv("GROQ_API_KEY")))
 
 @app.get("/api/system-greeting")
 async def system_greeting():

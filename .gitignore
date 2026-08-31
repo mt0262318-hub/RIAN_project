@@ -21,3 +21,7 @@ build/
 *.sql
 *.gz
 .aider*
+.env
+main_100_percent_verified.py
+main_backup.py
+main_final_100_percent_production.py
