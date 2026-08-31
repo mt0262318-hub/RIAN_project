@@ -718,13 +718,11 @@
         });
 
         function vocalize(text) {
-            if (!('speechSynthesis' in window)) return;
-            window.speechSynthesis.cancel();
-            const cleanText = text.replace(/\[.*?\]/g, '').replace(/[*#_`]/g, '').trim();
-            const utterance = new SpeechSynthesisUtterance(cleanText);
-            utterance.rate = 1.0; utterance.pitch = 0.9; 
-            window.speechSynthesis.speak(utterance);
-        }
+    // window.speechSynthesis.cancel();
+    // Browser ka robotic engine disable kar diya gaya hai.
+    console.log("Robotic TTS disabled. Waiting for backend audio...");
+}
+        
 
         // --- 8. TELEMETRY & 3D BACKGROUND ---
         function startTelemetry() {
