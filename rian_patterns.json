@@ -1,4 +1,5 @@
 [
     "RULE: Import the 'requests' library before using it.",
-    "RULE: Only give concise, directly relevant answers to the user\u2019s explicit question and avoid unsolicited, overly detailed plans or generic advice."
+    "RULE: Only give concise, directly relevant answers to the user\u2019s explicit question and avoid unsolicited, overly detailed plans or generic advice.",
+    "RULE: Always set a valid tool_choice (or disable tool calls) before the model generates content that may invoke a tool."
 ]
