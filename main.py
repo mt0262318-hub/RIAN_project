@@ -1431,14 +1431,20 @@ async def serve_master_ui():
             }
         });
 
-        function vocalize(text) {
-            if (!('speechSynthesis' in window)) return;
-            window.speechSynthesis.cancel();
-            const cleanText = text.replace(/\[.*?\]/g, '').replace(/[*#_`]/g, '').trim();
-            const utterance = new SpeechSynthesisUtterance(cleanText);
-            utterance.rate = 1.0; utterance.pitch = 0.9; 
-            window.speechSynthesis.speak(utterance);
-        }
+        function playCloudVoice(audioSource) {
+    const audioPlayer = document.getElementById('rianAudioPlayer');
+    
+    // अगर बैकएंड Base64 स्ट्रिंग भेज रहा है (Recommended for APIs)
+    if(audioSource.startsWith('UklGR')) { // 'UklGR' WAV/MP3 header signature
+        audioPlayer.src = "data:audio/mp3;base64," + audioSource;
+    } 
+    // अगर बैकएंड डायरेक्ट ऑडियो URL भेज रहा है
+    else {
+        audioPlayer.src = audioSource;
+    }
+    
+    audioPlayer.play().catch(e => console.error("Audio playback failed:", e));
+}
 
         // --- 8. TELEMETRY & 3D BACKGROUND ---
         function startTelemetry() {
@@ -1557,4 +1563,4 @@ if __name__ == "__main__":
     else:
         import uvicorn
         uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=False, workers=1)
-        
+<audio id="rianAudioPlayer" style="display: none;"></audio>        
