@@ -673,12 +673,20 @@
             }
             
             sysLogBox.appendChild(log);
-            requestAnimationFrame(() => { sysLogBox.scrollTop = sysLogBox.scrollHeight; });
-        }
+        requestAnimationFrame(() => { sysLogBox.scrollTop = sysLogBox.scrollHeight; });
+}
 
-        async function processCommand() {
-            const query = inputField.value.trim();
-            if (!query) return;
+// ----- YAHAN PASTE KARNA HAI 👇 -----
+function playRianVoice(audioB64) {
+    if (!audioB64) return;
+    let audio = new Audio("data:audio/mp3;base64," + audioB64);
+    audio.play();
+}
+// ------------------------------------
+
+async function processCommand() {
+    const query = inputField.value.trim();
+    if (!query) return;
 
             inputField.value = "";
             inputField.style.height = 'auto'; // Reset text box height
