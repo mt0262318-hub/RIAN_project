@@ -1,5 +1,7 @@
 [
     "RULE: Import the 'requests' library before using it.",
     "RULE: Only give concise, directly relevant answers to the user\u2019s explicit question and avoid unsolicited, overly detailed plans or generic advice.",
-    "RULE: Always set a valid tool_choice (or disable tool calls) before the model generates content that may invoke a tool."
+    "RULE: Always set a valid tool_choice (or disable tool calls) before the model generates content that may invoke a tool.",
+    "RULE: Throttle requests to stay below the 8000 tokens per minute limit.",
+    "RULE: Do not request more tokens in a minute than the organization\u2019s TPM limit (e.g., keep requests below 8000 tokens per minute)."
 ]
