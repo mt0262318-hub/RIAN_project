@@ -992,7 +992,7 @@ async def serve_master_ui():
     </style>
 </head>
 <body class="no-select">
-    
+<audio id="rianAudioPlayer" style="display: none;"></audio>    
     <svg width="0" height="0">
         <defs>
             <linearGradient id="rainbow-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -1563,4 +1563,3 @@ if __name__ == "__main__":
     else:
         import uvicorn
         uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=False, workers=1)
-        
