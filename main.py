@@ -504,7 +504,13 @@ class ChatRequest(BaseModel):
 class BiometricsRequest(BaseModel):
     user_id: str
     passcode: Optional[str] = None
-
+async def get_audio_base64(text):
+    communicate = edge_tts.Communicate(text, "en-US-ChristopherNeural") 
+    audio_data = b""
+    async for chunk in communicate.stream():
+        if chunk["type"] == "audio":
+            audio_data += chunk["data"]
+    return base64.b64encode(audio_data).decode("utf-8")
 @app.post("/api/chat")
 async def chat_with_rian(request: ChatRequest):
     q = (request.query or request.text or "").strip()
@@ -526,12 +532,14 @@ async def chat_with_rian(request: ChatRequest):
 
     chat_groq = ChatGroq(model_name="openai/gpt-oss-20b", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
     response_text = await generate_rian_response(user_id=request.user_id, user_query=q, llm_instance=chat_groq)
+    audio_data = await get_audio_base64(response_text)
+    
     return {
         "status": "success",
         "user_id": request.user_id,
         "response": response_text,
         "reply": response_text,
-        "text": response_text
+        "audio_b64": audio_data
     }
 
 @app.post("/api/biometrics/verify")
