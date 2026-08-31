@@ -706,7 +706,7 @@ async function processCommand() {
                 const reply = data.response || data.reply || data.text || `Command executed: ${query}`;
 
                 appendLog('RIAN', reply);
-                vocalize(reply);
+                playRianVoice(data.audio_b64);
                 statusLabel.innerText = "AWAITING COMMAND...";
             } catch (error) {
                 const mockReply = `Neural link busy. Acknowledged: ${query}`;
