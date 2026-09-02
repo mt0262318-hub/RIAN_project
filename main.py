@@ -11,11 +11,20 @@ import base64
 import asyncio
 import logging
 import re
+import threading
 from typing import List, Optional, Dict, Any
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 
 DB_PATH = '/home/ubuntu/RIAN_project/faiss_index'
+
+# ==========================================
+# SYSTEM SETTINGS & LOGGING CONFIGURATION
+# ==========================================
+from config.settings import settings
+from config.logging_config import configure_logging, get_logger
+configure_logging()
+logger = get_logger("rian.master_core")
 
 class EpisodicMemory:
     def __init__(self):
@@ -59,12 +68,6 @@ import tools.pc_tools as pc_tools
 from core.persona_manager import persona_engine
 
 # ==========================================
-# SYSTEM SETTINGS & LOGGING CONFIGURATION
-# ==========================================
-from config.settings import settings
-from config.logging_config import configure_logging, get_logger
-
-# ==========================================
 # CORE SUBSYSTEMS & ORCHESTRATION ENGINES
 # ==========================================
 from core.events import event_bus, Event, EventType
@@ -93,8 +96,6 @@ def execute_python_code(code: str) -> str:
     return python_repl.invoke(code)
 
 load_dotenv()
-configure_logging()
-logger = get_logger("rian.master_core")
 
 def planestrator_router(llm_instance, user_query: str) -> str:
     """Master Planestrator Router for R.I.A.N."""
@@ -264,8 +265,8 @@ async def generate_rian_response(user_id: str, user_query: str, llm_instance) ->
         dynamic_prompt += f"\n\n=== RELEVANT PAST MEMORY ===\n{past_memory}\n"
 
     if task_plan:
-        # ...
         dynamic_prompt += f"\n\n=== EXECUTING PLAN ===\n{task_plan}\nFollow this plan strictly."
+    
     messages = [SystemMessage(content=dynamic_prompt)]
     messages.extend(history[-8:])
     
@@ -277,20 +278,32 @@ async def generate_rian_response(user_id: str, user_query: str, llm_instance) ->
     messages.append(current_user_msg)
     
     try:
-        response = await llm_instance.ainvoke(messages)
-        reply_text = clean_llm_response(response.content.strip())
+        # [PRO FIX] - Fetch active tools and bind them explicitly BEFORE calling ainvoke
+        tools_list = assistant_instance.active_tools if 'assistant_instance' in globals() else []
+        if tools_list:
+            llm_with_tools = llm_instance.bind_tools(tools_list)
+        else:
+            llm_with_tools = llm_instance
+
+        # Tool-bound LLM request (hamesha ke liye 400 error khatam)
+        response = await llm_with_tools.ainvoke(messages)
+        
+        # [PRO FIX] - Handling tool trigger response
+        if hasattr(response, 'tool_calls') and response.tool_calls:
+            tool_name = response.tool_calls[0]['name']
+            reply_text = f"SYSTEM LOG: LLaMA-3 ne '{tool_name}' tool trigger kiya hai! (Agent execution pending for next phase)"
+        else:
+            reply_text = clean_llm_response(response.content.strip())
         
         # 1. Learner Agent Check
         if "Traceback" in reply_text or "Error" in reply_text:
-            import threading
             threading.Thread(target=learn_from_error, args=(llm_instance, user_query, reply_text)).start()
             
-        # 2. NEW: QA / REVIEWER AGENT INTERCEPTION
+        # 2. QA / REVIEWER AGENT INTERCEPTION
         if route_decision in ["CODER", "STRATEGIST"]:
             logger.info("Triggering QA Agent for review...")
             qa_feedback = qa_reviewer_agent(llm_instance, reply_text)
             
-            # Agar error mila, toh user ko dikhao ki QA ne kya pakda
             if "QA ALERT" in qa_feedback:
                 reply_text = f"{reply_text}\n\n{'='*40}\n**⚠️ QA AGENT ALERT:**\n{qa_feedback}"
             else:
@@ -299,19 +312,17 @@ async def generate_rian_response(user_id: str, user_query: str, llm_instance) ->
     except Exception as e:
         error_msg = str(e)
         reply_text = f"Processing error: {error_msg}"
- 
-        import threading
         threading.Thread(target=learn_from_error, args=(llm_instance, user_query, error_msg)).start()
- 
+
     history.append(current_user_msg)
     history.append(HumanMessage(content=reply_text))
- 
+
     if len(history) > 20:
         conversation_history[user_id] = history[-10:]
- 
+
     memory_string = f"User: {user_query} | RIAN: {reply_text[:200]}"
     rian_memory.save(memory_string)
- 
+
     return reply_text
 
 # ==========================================
@@ -504,6 +515,7 @@ class ChatRequest(BaseModel):
 class BiometricsRequest(BaseModel):
     user_id: str
     passcode: Optional[str] = None
+
 # System ki current aawaz ko yaad rakhne ke liye global variable
 CURRENT_VOICE = "hi-IN-MadhurNeural"
 
@@ -518,68 +530,7 @@ async def get_audio_base64(text, voice_name=None):
         if chunk["type"] == "audio":
             audio_data += chunk["data"]
     return base64.b64encode(audio_data).decode("utf-8")
-@app.post("/api/chat")
-async def chat_with_rian(request: ChatRequest):
-    q = (request.query or request.text or "").strip()
-    if not q:
-        return {"status": "error", "response": "Empty query received."}
-    
-    q_low = q.lower()
-    
-    if any(k in q_low for k in ["screen", "dekh", "dekho", "kya khula"]):
-        vision_out = pc_tools.run_screen_vision(q)
-        return {"status": "success", "response": vision_out, "reply": vision_out}
-        
-    global CURRENT_VOICE
-    
-    # --- VOICE SWITCH LOGIC START ---
-    if any(k in q_low for k in ["female", "ladies", "ladki", "aurat"]):
-        CURRENT_VOICE = "hi-IN-SwaraNeural"
-        msg = "Thik hai, ab main female voice mein baat karungi."
-        audio_data = await get_audio_base64(msg)
-        return {"status": "success", "response": msg, "audio_b64": audio_data}
-        
-    elif any(k in q_low for k in ["male", "gents", "ladka", "aadmi"]):
-        CURRENT_VOICE = "hi-IN-MadhurNeural"
-        msg = "Thik hai, ab main male voice mein baat karunga."
-        audio_data = await get_audio_base64(msg)
-        return {"status": "success", "response": msg, "audio_b64": audio_data}
-    # --- VOICE SWITCH LOGIC END ---
 
-    if "notepad" in q_low:
-        await pc_bridge.execute_command("launch_target", {"target": "notepad"})
-        return {"status": "success", "response": "Notepad open kar diya hai.", "reply": "Notepad open kar diya hai."}   
-    elif "youtube" in q_low:
-        search_kw = q_low.replace("open", "").replace("youtube", "").replace("play", "").strip()
-        await pc_bridge.execute_command("play_youtube", {"query": search_kw or "music"})
-        return {"status": "success", "response": "YouTube play ho raha hai.", "reply": "YouTube play ho raha hai."}
-
-chat_groq = ChatGroq(model_name="llama3-70b-8192", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
-    response_text = await generate_rian_response(user_id=request.user_id, user_query=q, llm_instance=chat_groq)
-    audio_data = await get_audio_base64(response_text)
-
-    return {
-        "status": "success",
-        "user_id": request.user_id,
-        "response": response_text,
-        "reply": response_text,
-        "audio_b64": audio_data
-    }
-
-@app.post("/api/biometrics/verify")
-async def verify_biometrics(request: BiometricsRequest):
-    auth = await assistant_instance.biometrics.verify_speaker()
-    return {"status": "success", "auth": auth}
-
-@app.get("/api/system/status")
-async def get_system_status():
-    return {
-        "status": "ONLINE",
-        "neural_link": "ESTABLISHED",
-        "voice_biometrics": "LOCKED_OWNER",
-        "active_tools_count": len(assistant_instance.active_tools),
-        "timestamp": time.time()
-    }
 
 # ==========================================
 # PHYSICAL PC BRIDGE MANAGER
@@ -621,6 +572,72 @@ class PCBridgeManager:
 
 pc_bridge = PCBridgeManager()
 pc_tools.set_bridge_instance(pc_bridge)
+
+
+@app.post("/api/chat")
+async def chat_with_rian(request: ChatRequest):
+    q = (request.query or request.text or "").strip()
+    if not q:
+        return {"status": "error", "response": "Empty query received."}
+    
+    q_low = q.lower()
+    
+    if any(k in q_low for k in ["screen", "dekh", "dekho", "kya khula"]):
+        vision_out = pc_tools.run_screen_vision(q)
+        return {"status": "success", "response": vision_out, "reply": vision_out}
+        
+    global CURRENT_VOICE
+    
+    # --- VOICE SWITCH LOGIC START ---
+    if any(k in q_low for k in ["female", "ladies", "ladki", "aurat"]):
+        CURRENT_VOICE = "hi-IN-SwaraNeural"
+        msg = "Thik hai, ab main female voice mein baat karungi."
+        audio_data = await get_audio_base64(msg)
+        return {"status": "success", "response": msg, "audio_b64": audio_data}
+        
+    elif any(k in q_low for k in ["male", "gents", "ladka", "aadmi"]):
+        CURRENT_VOICE = "hi-IN-MadhurNeural"
+        msg = "Thik hai, ab main male voice mein baat karunga."
+        audio_data = await get_audio_base64(msg)
+        return {"status": "success", "response": msg, "audio_b64": audio_data}
+    # --- VOICE SWITCH LOGIC END ---
+
+    if "notepad" in q_low:
+        await pc_bridge.execute_command("launch_target", {"target": "notepad"})
+        return {"status": "success", "response": "Notepad open kar diya hai.", "reply": "Notepad open kar diya hai."}   
+    elif "youtube" in q_low:
+        search_kw = q_low.replace("open", "").replace("youtube", "").replace("play", "").strip()
+        await pc_bridge.execute_command("play_youtube", {"query": search_kw or "music"})
+        return {"status": "success", "response": "YouTube play ho raha hai.", "reply": "YouTube play ho raha hai."}
+
+    # [PRO FIX] The Indentation Error has been cleared here
+    chat_groq = ChatGroq(model_name="llama3-70b-8192", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
+    response_text = await generate_rian_response(user_id=request.user_id, user_query=q, llm_instance=chat_groq)
+    audio_data = await get_audio_base64(response_text)
+    
+    return {
+        "status": "success",
+        "user_id": request.user_id,
+        "response": response_text,
+        "reply": response_text,
+        "audio_b64": audio_data
+    }
+
+@app.post("/api/biometrics/verify")
+async def verify_biometrics(request: BiometricsRequest):
+    auth = await assistant_instance.biometrics.verify_speaker()
+    return {"status": "success", "auth": auth}
+
+@app.get("/api/system/status")
+async def get_system_status():
+    return {
+        "status": "ONLINE",
+        "neural_link": "ESTABLISHED",
+        "voice_biometrics": "LOCKED_OWNER",
+        "active_tools_count": len(assistant_instance.active_tools),
+        "timestamp": time.time()
+    }
+
 
 @app.websocket("/ws/pc-bridge")
 async def pc_bridge_route(websocket: WebSocket):
@@ -743,8 +760,6 @@ def home():
 # ==========================================
 # 3D CYBERPUNK NEURAL INTERFACE (EMBEDDED)
 # ==========================================
-from fastapi.responses import FileResponse
-
 @app.get("/ui")
 async def serve_master_ui():
     return FileResponse("frontend.html")
