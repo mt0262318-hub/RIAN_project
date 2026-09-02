@@ -13,5 +13,6 @@
     "RULE: Always specify a tool_choice before generating a tool call to avoid invoking a tool when tool_choice is none.",
     "RULE: Always include the required tool in the tool list before invoking it.",
     "RULE: Always include the intended tool in the tool list before the model attempts to call it.",
-    "RULE: Explicitly specify any required tool in the instruction before the model is allowed to call it."
+    "RULE: Explicitly specify any required tool in the instruction before the model is allowed to call it.",
+    "RULE: Do not invoke any tool unless a tool choice has been explicitly specified."
 ]
