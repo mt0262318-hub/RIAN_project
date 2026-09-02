@@ -5,5 +5,6 @@
     "RULE: Throttle requests to stay below the 8000 tokens per minute limit.",
     "RULE: Do not request more tokens in a minute than the organization\u2019s TPM limit (e.g., keep requests below 8000 tokens per minute).",
     "RULE: Always set tool_choice to a specific tool or 'auto' before the model attempts to call a tool.",
-    "RULE: Set the tool_choice to the intended tool before the model can call it; otherwise set tool_choice to 'none' to prevent unintended tool invocation."
+    "RULE: Set the tool_choice to the intended tool before the model can call it; otherwise set tool_choice to 'none' to prevent unintended tool invocation.",
+    "RULE: Always specify a tool_choice when a tool call is expected; do not allow the model to call a tool without an explicit tool_choice."
 ]
