@@ -504,8 +504,15 @@ class ChatRequest(BaseModel):
 class BiometricsRequest(BaseModel):
     user_id: str
     passcode: Optional[str] = None
-async def get_audio_base64(text):
-    communicate = edge_tts.Communicate(text, "hi-IN-MadhurNeural")
+# System ki current aawaz ko yaad rakhne ke liye global variable
+CURRENT_VOICE = "hi-IN-MadhurNeural"
+
+async def get_audio_base64(text, voice_name=None):
+    global CURRENT_VOICE
+    if voice_name is None:
+        voice_name = CURRENT_VOICE
+        
+    communicate = edge_tts.Communicate(text, voice_name) 
     audio_data = b""
     async for chunk in communicate.stream():
         if chunk["type"] == "audio":
