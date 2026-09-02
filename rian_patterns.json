@@ -7,5 +7,6 @@
     "RULE: Always set tool_choice to a specific tool or 'auto' before the model attempts to call a tool.",
     "RULE: Set the tool_choice to the intended tool before the model can call it; otherwise set tool_choice to 'none' to prevent unintended tool invocation.",
     "RULE: Always specify a tool_choice when a tool call is expected; do not allow the model to call a tool without an explicit tool_choice.",
-    "RULE: Do not allow the model to call a tool unless tool_choice is set to \"auto\" or a specific tool is explicitly selected."
+    "RULE: Do not allow the model to call a tool unless tool_choice is set to \"auto\" or a specific tool is explicitly selected.",
+    "RULE: Always specify the tool choice before invoking any tool."
 ]
