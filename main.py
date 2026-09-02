@@ -345,7 +345,7 @@ class RIANAssistant:
     def __init__(self) -> None:
         logger.info("Initializing R.I.A.N. Assistant Master Core...")
         self.llm = ChatGroq(
-            model_name="openai/gpt-oss-20b",
+            model_name="llama3-70b-8192",
             api_key=settings.groq_api_key or os.getenv("GROQ_API_KEY"),
         )
         self.active_tools = ALL_TOOLS + [
@@ -646,7 +646,7 @@ async def pc_bridge_route(websocket: WebSocket):
 async def websocket_telemetry(websocket: WebSocket):
     await manager.connect(websocket)
     try:
-        chat_groq = ChatGroq(model_name="openai/gpt-oss-20b", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
+        chat_groq = ChatGroq(model_name="llama3-70b-8192", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
         while True:
             raw_data = await websocket.receive_text()
             try:
