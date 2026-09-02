@@ -525,13 +525,30 @@ async def chat_with_rian(request: ChatRequest):
         return {"status": "error", "response": "Empty query received."}
     
     q_low = q.lower()
+    
     if any(k in q_low for k in ["screen", "dekh", "dekho", "kya khula"]):
         vision_out = pc_tools.run_screen_vision(q)
         return {"status": "success", "response": vision_out, "reply": vision_out}
+        
+    global CURRENT_VOICE
+    
+    # --- VOICE SWITCH LOGIC START ---
+    if any(k in q_low for k in ["female", "ladies", "ladki", "aurat"]):
+        CURRENT_VOICE = "hi-IN-SwaraNeural"
+        msg = "Thik hai, ab main female voice mein baat karungi."
+        audio_data = await get_audio_base64(msg)
+        return {"status": "success", "response": msg, "audio_b64": audio_data}
+        
+    elif any(k in q_low for k in ["male", "gents", "ladka", "aadmi"]):
+        CURRENT_VOICE = "hi-IN-MadhurNeural"
+        msg = "Thik hai, ab main male voice mein baat karunga."
+        audio_data = await get_audio_base64(msg)
+        return {"status": "success", "response": msg, "audio_b64": audio_data}
+    # --- VOICE SWITCH LOGIC END ---
 
     if "notepad" in q_low:
         await pc_bridge.execute_command("launch_target", {"target": "notepad"})
-        return {"status": "success", "response": "Notepad open kar diya hai.", "reply": "Notepad open kar diya hai."}
+        return {"status": "success", "response": "Notepad open kar diya hai.", "reply": "Notepad open kar diya hai."}   
     elif "youtube" in q_low:
         search_kw = q_low.replace("open", "").replace("youtube", "").replace("play", "").strip()
         await pc_bridge.execute_command("play_youtube", {"query": search_kw or "music"})
