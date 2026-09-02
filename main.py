@@ -554,7 +554,7 @@ async def chat_with_rian(request: ChatRequest):
         await pc_bridge.execute_command("play_youtube", {"query": search_kw or "music"})
         return {"status": "success", "response": "YouTube play ho raha hai.", "reply": "YouTube play ho raha hai."}
 
-   chat_groq = ChatGroq(model_name="openai/gpt-oss-20b", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
+    chat_groq = ChatGroq(model_name="llama3-70b-8192", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
         
         # YAHAN YEH NAYI LINE ADD KAR:
         chat_groq = chat_groq.bind_tools(tools, tool_choice="auto")
