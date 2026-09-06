@@ -16,7 +16,7 @@ async def test_agent():
             print("❌ [ERROR] GROQ_API_KEY missing in terminal!")
             return
             
-        llm = ChatGroq(model_name="llama3-8b-8192", api_key=api_key, temperature=0.5)
+        llm = ChatGroq(model_name="llama-3.1-8b-instant", api_key=api_key, temperature=0.5)
         llm_with_tools = llm.bind_tools([websearch])
         
         print("🚀 [2] Sending Tool Command (Bypassing UI)...")
