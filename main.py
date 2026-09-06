@@ -256,15 +256,13 @@ def get_learned_patterns() -> str:
         return ""
 
 async def generate_rian_response(user_id: str, user_query: str, llm_instance) -> str:
-    # 1. Router se pucho ki task kiska hai
     route_decision = planestrator_router(llm_instance, user_query)
     task_plan = ""
     if route_decision == "STRATEGIST":
         task_plan = strategist_planner(llm_instance, user_query)
-        route_decision = "CODER" # Plan banane ke baad kaam Coder ko de do
+        route_decision = "CODER" 
     history = get_or_create_history(user_id)
     
-    # 2. RIAN ke dimaag me purani galtiyan (Patterns) live load karo
     dynamic_prompt = RIAN_SYSTEM_PROMPT + get_learned_patterns()
 
     past_memory = rian_memory.remember(user_query)
@@ -277,7 +275,6 @@ async def generate_rian_response(user_id: str, user_query: str, llm_instance) ->
     messages = [SystemMessage(content=dynamic_prompt)]
     messages.extend(history[-8:])
     
-    # 3. Main AI ko strictly uska current role batao
     router_hint = f"SYSTEM NOTIFICATION: The Master Router has classified this task as [{route_decision}]. Act ONLY as this specialist."
     messages.append(SystemMessage(content=router_hint))
     
@@ -285,17 +282,14 @@ async def generate_rian_response(user_id: str, user_query: str, llm_instance) ->
     messages.append(current_user_msg)
     
     try:
-        # [PRO FIX] - Fetch active tools and bind them explicitly BEFORE calling ainvoke
         tools_list = assistant_instance.active_tools if 'assistant_instance' in globals() else []
         if tools_list:
             llm_with_tools = llm_instance.bind_tools(tools_list)
         else:
             llm_with_tools = llm_instance
 
-        # Tool-bound LLM request
         response = await llm_with_tools.ainvoke(messages)
         
-        # [PRO FIX] - Handling tool trigger response & Live Execution
         if hasattr(response, 'tool_calls') and response.tool_calls:
             tool_name = response.tool_calls[0]['name']
             tool_args = response.tool_calls[0]['args']
@@ -309,11 +303,9 @@ async def generate_rian_response(user_id: str, user_query: str, llm_instance) ->
         else:
             reply_text = clean_llm_response(response.content.strip())
         
-        # 1. Learner Agent Check
         if "Traceback" in reply_text or "Error" in reply_text:
             threading.Thread(target=learn_from_error, args=(llm_instance, user_query, reply_text)).start()
             
-        # 2. QA / REVIEWER AGENT INTERCEPTION
         if route_decision in ["CODER", "STRATEGIST"]:
             logger.info("Triggering QA Agent for review...")
             qa_feedback = qa_reviewer_agent(llm_instance, reply_text)
@@ -369,13 +361,12 @@ class RIANAssistant:
 
     def __init__(self) -> None:
         logger.info("Initializing R.I.A.N. Assistant Master Core...")
-        # [PRO FIX 1] Naya Versatile Model
         self.llm = ChatGroq(
             model_name="llama3-8b-8192",
             api_key=settings.groq_api_key or os.getenv("GROQ_API_KEY"),
         )
         self.active_tools = ALL_TOOLS + [
-            websearch,  # [PRO FIX] Replaced original DuckDuckGoSearchRun() with our bypass tool
+            websearch,
             execute_python_code,
             pc_tools.analyze_laptop_screen,
             pc_tools.play_youtube_video,
@@ -531,20 +522,26 @@ class BiometricsRequest(BaseModel):
     user_id: str
     passcode: Optional[str] = None
 
-# System ki current aawaz ko yaad rakhne ke liye global variable
-CURRENT_VOICE = "hi-IN-MadhurNeural"
+# 100% HUMAN VOICE SYSTEM SETUP (OpenAI Nova by Default)
+CURRENT_VOICE = "nova"
 
 async def get_audio_base64(text, voice_name=None):
+    """Generates 100% Human Voice using OpenAI TTS"""
     global CURRENT_VOICE
     if voice_name is None:
         voice_name = CURRENT_VOICE
         
-    communicate = edge_tts.Communicate(text, voice_name) 
-    audio_data = b""
-    async for chunk in communicate.stream():
-        if chunk["type"] == "audio":
-            audio_data += chunk["data"]
-    return base64.b64encode(audio_data).decode("utf-8")
+    try:
+        aclient = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        speech_response = await aclient.audio.speech.create(
+            model="tts-1",
+            voice=voice_name,
+            input=text
+        )
+        return base64.b64encode(speech_response.content).decode("utf-8")
+    except Exception as e:
+        logger.error(f"OpenAI TTS Error: {e}")
+        return ""
 
 
 # ==========================================
@@ -605,13 +602,13 @@ async def chat_with_rian(request: ChatRequest):
     
     # --- VOICE SWITCH LOGIC START ---
     if any(k in q_low for k in ["female", "ladies", "ladki", "aurat"]):
-        CURRENT_VOICE = "hi-IN-SwaraNeural"
+        CURRENT_VOICE = "nova" # OpenAI Female Voice
         msg = "Thik hai, ab main female voice mein baat karungi."
         audio_data = await get_audio_base64(msg)
         return {"status": "success", "response": msg, "audio_b64": audio_data}
         
     elif any(k in q_low for k in ["male", "gents", "ladka", "aadmi"]):
-        CURRENT_VOICE = "hi-IN-MadhurNeural"
+        CURRENT_VOICE = "onyx" # OpenAI Male Voice
         msg = "Thik hai, ab main male voice mein baat karunga."
         audio_data = await get_audio_base64(msg)
         return {"status": "success", "response": msg, "audio_b64": audio_data}
@@ -625,7 +622,6 @@ async def chat_with_rian(request: ChatRequest):
         await pc_bridge.execute_command("play_youtube", {"query": search_kw or "music"})
         return {"status": "success", "response": "YouTube play ho raha hai.", "reply": "YouTube play ho raha hai."}
 
-    # [PRO FIX 2] Naya Versatile Model
     chat_groq = ChatGroq(model_name="llama3-8b-8192", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
     response_text = await generate_rian_response(user_id=request.user_id, user_query=q, llm_instance=chat_groq)
     audio_data = await get_audio_base64(response_text)
@@ -674,7 +670,6 @@ async def pc_bridge_route(websocket: WebSocket):
 async def websocket_telemetry(websocket: WebSocket):
     await manager.connect(websocket)
     try:
-        # [PRO FIX 3] Naya Versatile Model
         chat_groq = ChatGroq(model_name="llama3-8b-8192", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
         while True:
             raw_data = await websocket.receive_text()
@@ -729,13 +724,17 @@ groq_voice_client = Groq(api_key=os.environ.get("GROQ_API_KEY", os.getenv("GROQ_
 @app.get("/api/system-greeting")
 async def system_greeting():
     greeting_text = "System R.I.A.N. is online. Direct Neural Link active and ready, Manish."
-    communicate = edge_tts.Communicate(greeting_text, "en-US-ChristopherNeural")
-    audio_stream = io.BytesIO()
-    async for chunk in communicate.stream():
-        if chunk["type"] == "audio":
-            audio_stream.write(chunk["data"])
-    audio_stream.seek(0)
-    audio_b64 = base64.b64encode(audio_stream.getvalue()).decode("utf-8")
+    try:
+        aclient = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        speech_response = await aclient.audio.speech.create(
+            model="tts-1",
+            voice="nova",
+            input=greeting_text
+        )
+        audio_b64 = base64.b64encode(speech_response.content).decode("utf-8")
+    except Exception as e:
+        logger.error(f"Greeting Voice Error: {e}")
+        audio_b64 = ""
     return {"message": greeting_text, "audio_b64": audio_b64}
 
 @app.post("/api/voice-query")
@@ -776,12 +775,25 @@ async def voice_query_handler(file: UploadFile = File(...)):
 @app.get("/")
 def home():
     return {"message": "R.I.A.N. AI Assistant is running successfully!"}
+
 # ==========================================
 # 3D CYBERPUNK NEURAL INTERFACE (EMBEDDED)
 # ==========================================
 @app.get("/ui")
 async def serve_master_ui():
     return FileResponse("frontend.html")
+
+# ==========================================
+# EXTRA API ENDPOINTS
+# ==========================================
+@app.post("/api/generate-media")
+async def generate_media_api(request: Request):
+    return {
+        "status": "success", 
+        "response": "Media Studio Backend is Online. Processing your media request...", 
+        "reply": "Media module triggered successfully.",
+        "audio_b64": ""
+    }
 
 # ==========================================
 # CLI DUAL-INTERACTIVE SYSTEM
@@ -843,11 +855,4 @@ if __name__ == "__main__":
         asyncio.run(terminal_main())
     else:
         import uvicorn
-        uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=False, workers=1)
-@app.post("/api/generate-media")
-    return {
-        "status": "success", 
-        "response": "Media Studio Backend is Online. Processing your media request...", 
-        "reply": "Media module triggered successfully.",
-        "audio_b64": ""
-    }
+        uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False, workers=1)
