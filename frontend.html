@@ -485,11 +485,6 @@
             }
         });
 
-        micBtn.addEventListener('click', () => {
-            appendLog('SYSTEM', 'Microphone activated. Listening...');
-            statusLabel.innerText = "LISTENING...";
-        });
-
         // --- 4. MODAL LOGIC ---
         function openModal(title, contentHTML) {
             modalTitle.innerHTML = title;
@@ -651,7 +646,7 @@
         document.getElementById('drwLibrary').addEventListener('click', () => triggerModalLogic('library'));
         if(document.getElementById('drwSettings')) document.getElementById('drwSettings').addEventListener('click', () => triggerModalLogic('settings'));
 
-        // --- 7. CHAT LOGIC (Send & Render) ---
+        // --- 7. CHAT & VOICE LOGIC ---
         function appendLog(sender, message) {
             if(!sysLogBox) return;
             const log = document.createElement('div');
@@ -673,20 +668,69 @@
             }
             
             sysLogBox.appendChild(log);
-        requestAnimationFrame(() => { sysLogBox.scrollTop = sysLogBox.scrollHeight; });
-}
+            requestAnimationFrame(() => { sysLogBox.scrollTop = sysLogBox.scrollHeight; });
+        }
 
-// ----- YAHAN PASTE KARNA HAI 👇 -----
-function playRianVoice(audioB64) {
-    if (!audioB64) return;
-    let audio = new Audio("data:audio/mp3;base64," + audioB64);
-    audio.play();
-}
-// ------------------------------------
+        function playRianVoice(audioB64) {
+            if (!audioB64) return;
+            let audio = new Audio("data:audio/mp3;base64," + audioB64);
+            audio.play();
+        }
 
-async function processCommand() {
-    const query = inputField.value.trim();
-    if (!query) return;
+        // [PRO FIX]: MIC BUTTON LOGIC (Actual MediaRecorder connected to Backend)
+        let mediaStream = null;
+        let recorder = null;
+        let voiceChunks = [];
+        let isRecording = false;
+
+        micBtn.addEventListener('click', async () => {
+            if (!isRecording) {
+                try {
+                    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    recorder = new MediaRecorder(mediaStream);
+                    voiceChunks = [];
+                    
+                    recorder.ondataavailable = e => { if (e.data.size > 0) voiceChunks.push(e.data); };
+                    
+                    recorder.onstop = async () => {
+                        statusLabel.innerText = "PROCESSING VOICE COMMAND...";
+                        const audioBlob = new Blob(voiceChunks, { type: 'audio/webm' });
+                        const formData = new FormData();
+                        formData.append('file', audioBlob);
+
+                        try {
+                            const res = await fetch('/api/voice-query', { method: 'POST', body: formData });
+                            const data = await res.json();
+                            if(data.user_text) appendLog('USER', data.user_text);
+                            if(data.response_text) appendLog('RIAN', data.response_text);
+                            if(data.audio_b64) playRianVoice(data.audio_b64);
+                        } catch (err) {
+                            appendLog('SYSTEM', 'Voice processing failed or server offline.');
+                        }
+                        statusLabel.innerText = "AWAITING COMMAND...";
+                    };
+
+                    recorder.start();
+                    isRecording = true;
+                    micBtn.style.color = '#ff4444'; // Red to indicate recording
+                    appendLog('SYSTEM', 'Microphone activated. Listening...');
+                    statusLabel.innerText = "🔴 LISTENING... SPEAK NOW";
+                } catch (e) {
+                    appendLog('SYSTEM', 'Microphone access denied or not available.');
+                }
+            } else {
+                if (recorder && recorder.state !== 'inactive') {
+                    recorder.stop();
+                }
+                isRecording = false;
+                micBtn.style.color = '#00e5ff'; // Reset color
+            }
+        });
+
+        // TEXT COMMAND EXECUTION
+        async function processCommand() {
+            const query = inputField.value.trim();
+            if (!query) return;
 
             inputField.value = "";
             inputField.style.height = 'auto'; // Reset text box height
@@ -711,7 +755,6 @@ async function processCommand() {
             } catch (error) {
                 const mockReply = `Neural link busy. Acknowledged: ${query}`;
                 appendLog('RIAN', mockReply);
-                vocalize(mockReply);
                 statusLabel.innerText = "AWAITING COMMAND...";
             }
         }
@@ -725,12 +768,16 @@ async function processCommand() {
             }
         });
 
-        function vocalize(text) {
-    // window.speechSynthesis.cancel();
-    // Browser ka robotic engine disable kar diya gaya hai.
-    console.log("Robotic TTS disabled. Waiting for backend audio...");
-}
-        
+        // [PRO FIX]: Auto-Greeting on UI Load
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const res = await fetch('/api/system-greeting');
+                const data = await res.json();
+                if (data.audio_b64) playRianVoice(data.audio_b64);
+            } catch (e) {
+                console.log("Greeting failed, backend offline.");
+            }
+        });
 
         // --- 8. TELEMETRY & 3D BACKGROUND ---
         function startTelemetry() {
