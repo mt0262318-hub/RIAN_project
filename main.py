@@ -95,6 +95,12 @@ def execute_python_code(code: str) -> str:
     """Write and execute Python code for math, logic, and data analysis. Input must be raw valid Python code. Always use print() to output the final result."""
     return python_repl.invoke(code)
 
+# [PRO FIX: GROQ VALIDATION BYPASS TOOL]
+@tool("websearch")
+def websearch(query: str, topn: int = 5, source: str = "news") -> str:
+    """Use this tool to search the internet for latest news, weather, and facts."""
+    return DuckDuckGoSearchRun().invoke(query)
+
 load_dotenv()
 
 def planestrator_router(llm_instance, user_query: str) -> str:
@@ -224,7 +230,7 @@ RIAN_SYSTEM_PROMPT = f"""You are R.I.A.N. (Real-time Intelligent Adaptive Node),
     2. Context Memory: Always maintain full context of recent conversation turns.
     3. Desktop Operations: If the user explicitly asks to open an app or control the PC, use the provided pc_tools.
     4. Tone & Style: Sharp, respectful, authentic, and direct. Communicate in natural, clear Hinglish.
-    5. STRICT INTERNET RULE: To answer questions about news, current events, weather, or real-time facts, you MUST use your internal web search tool (DuckDuckGo) to fetch data silently in the background and tell the user. DO NOT physically open a web browser on the PC to find information for yourself.
+    5. STRICT INTERNET RULE: To answer questions about news, current events, weather, or real-time facts, you MUST use your internal web search tool (websearch) to fetch data silently in the background and tell the user. DO NOT physically open a web browser on the PC to find information for yourself.
     6. No Roleplay: Do not narrate your actions, and never claim to do physical tasks you aren't actually doing. Be direct.
     7. CODER MODE: You have a Python REPL tool. If the user asks a mathematical question, requires data analysis, or wants to run an algorithm, you MUST write and execute Python code using this tool to get the exact answer."""
 
@@ -257,7 +263,7 @@ async def generate_rian_response(user_id: str, user_query: str, llm_instance) ->
         route_decision = "CODER" # Plan banane ke baad kaam Coder ko de do
     history = get_or_create_history(user_id)
     
-   # 2. RIAN ke dimaag me purani galtiyan (Patterns) live load karo
+    # 2. RIAN ke dimaag me purani galtiyan (Patterns) live load karo
     dynamic_prompt = RIAN_SYSTEM_PROMPT + get_learned_patterns()
 
     past_memory = rian_memory.remember(user_query)
@@ -285,13 +291,20 @@ async def generate_rian_response(user_id: str, user_query: str, llm_instance) ->
         else:
             llm_with_tools = llm_instance
 
-        # Tool-bound LLM request (hamesha ke liye 400 error khatam)
+        # Tool-bound LLM request
         response = await llm_with_tools.ainvoke(messages)
         
-        # [PRO FIX] - Handling tool trigger response
+        # [PRO FIX] - Handling tool trigger response & Live Execution
         if hasattr(response, 'tool_calls') and response.tool_calls:
             tool_name = response.tool_calls[0]['name']
-            reply_text = f"SYSTEM LOG: LLaMA-3 ne '{tool_name}' tool trigger kiya hai! (Agent execution pending for next phase)"
+            tool_args = response.tool_calls[0]['args']
+            
+            if tool_name == "websearch":
+                search_query = tool_args.get("query", user_query)
+                search_result = websearch.invoke({"query": search_query})
+                reply_text = f"📰 [LIVE INTERNET SEARCH] {search_query}:\n\n{search_result}"
+            else:
+                reply_text = f"SYSTEM LOG: LLaMA-3.1 ne '{tool_name}' tool trigger kiya hai! (Agent execution pending)"
         else:
             reply_text = clean_llm_response(response.content.strip())
         
@@ -355,12 +368,13 @@ class RIANAssistant:
 
     def __init__(self) -> None:
         logger.info("Initializing R.I.A.N. Assistant Master Core...")
+        # [PRO FIX 1] Naya Versatile Model
         self.llm = ChatGroq(
-            model_name="llama3-70b-8192",
+            model_name="llama-3.1-70b-versatile",
             api_key=settings.groq_api_key or os.getenv("GROQ_API_KEY"),
         )
         self.active_tools = ALL_TOOLS + [
-            DuckDuckGoSearchRun(),
+            websearch,  # [PRO FIX] Replaced original DuckDuckGoSearchRun() with our bypass tool
             execute_python_code,
             pc_tools.analyze_laptop_screen,
             pc_tools.play_youtube_video,
@@ -610,8 +624,8 @@ async def chat_with_rian(request: ChatRequest):
         await pc_bridge.execute_command("play_youtube", {"query": search_kw or "music"})
         return {"status": "success", "response": "YouTube play ho raha hai.", "reply": "YouTube play ho raha hai."}
 
-    # [PRO FIX] The Indentation Error has been cleared here
-    chat_groq = ChatGroq(model_name="llama3-70b-8192", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
+    # [PRO FIX 2] Naya Versatile Model
+    chat_groq = ChatGroq(model_name="llama-3.1-70b-versatile", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
     response_text = await generate_rian_response(user_id=request.user_id, user_query=q, llm_instance=chat_groq)
     audio_data = await get_audio_base64(response_text)
     
@@ -659,7 +673,8 @@ async def pc_bridge_route(websocket: WebSocket):
 async def websocket_telemetry(websocket: WebSocket):
     await manager.connect(websocket)
     try:
-        chat_groq = ChatGroq(model_name="llama3-70b-8192", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
+        # [PRO FIX 3] Naya Versatile Model
+        chat_groq = ChatGroq(model_name="llama-3.1-70b-versatile", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
         while True:
             raw_data = await websocket.receive_text()
             try:
