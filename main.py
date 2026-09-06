@@ -753,13 +753,17 @@ async def voice_query_handler(file: UploadFile = File(...)):
             return {"user_text": "", "response_text": "I didn't catch that."}
 
         response_text = await assistant_instance.process_query(user_text)
-        communicate = edge_tts.Communicate(response_text, "en-US-ChristopherNeural")
-        audio_stream = io.BytesIO()
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                audio_stream.write(chunk["data"])
-        audio_stream.seek(0)
-        audio_b64 = base64.b64encode(audio_stream.getvalue()).decode("utf-8")
+        
+        # --- 100% HUMAN VOICE (NOVA) ---
+        aclient = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        
+        speech_response = await aclient.audio.speech.create(
+            model="tts-1",
+            voice="nova",
+            input=response_text
+        )
+        audio_b64 = base64.b64encode(speech_response.content).decode("utf-8")
+        # -------------------------------
 
         return {
             "user_text": user_text,
@@ -772,7 +776,6 @@ async def voice_query_handler(file: UploadFile = File(...)):
 @app.get("/")
 def home():
     return {"message": "R.I.A.N. AI Assistant is running successfully!"}
-
 # ==========================================
 # 3D CYBERPUNK NEURAL INTERFACE (EMBEDDED)
 # ==========================================
