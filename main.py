@@ -845,7 +845,6 @@ if __name__ == "__main__":
         import uvicorn
         uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=False, workers=1)
 @app.post("/api/generate-media")
-async def generate_media_api(request: Request):du -sh ~/.cache/huggingface/hub/* 2>/dev/null
     return {
         "status": "success", 
         "response": "Media Studio Backend is Online. Processing your media request...", 
