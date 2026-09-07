@@ -1,4 +1,3 @@
-from openai import AsyncOpenAI
 import base64
 from fastapi.responses import FileResponse
 from langchain_experimental.tools import PythonREPLTool
@@ -13,11 +12,18 @@ import asyncio
 import logging
 import re
 import threading
+import subprocess
+import uuid
 from typing import List, Optional, Dict, Any
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.chat_models import ChatOllama
 
-DB_PATH = '/home/ubuntu/RIAN_project/faiss_index'
+# ==========================================
+# UPDATED HEAVY STORAGE PATHS (5TB GDRIVE)
+# ==========================================
+DB_PATH = os.path.expanduser('~/gdrive_storage/faiss_index')
+PATTERN_FILE = os.path.expanduser('~/gdrive_storage/rian_patterns.json')
 
 # ==========================================
 # SYSTEM SETTINGS & LOGGING CONFIGURATION
@@ -34,6 +40,7 @@ class EpisodicMemory:
             if os.path.exists(DB_PATH):
                 self.db = FAISS.load_local(DB_PATH, self.embeddings, allow_dangerous_deserialization=True)
             else:
+                os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
                 self.db = FAISS.from_texts(["System Initialized. Permanent Memory Active."], self.embeddings)
                 self.db.save_local(DB_PATH)
             self.active = True
@@ -58,10 +65,7 @@ from pydantic import BaseModel, Field
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, File, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
-from groq import Groq
-import edge_tts
 
 from services.ingress_router import ingress_bp
 from tools.vault_tool_schema import VAULT_TOOLS, handle_vault_call
@@ -96,7 +100,6 @@ def execute_python_code(code: str) -> str:
     """Write and execute Python code for math, logic, and data analysis. Input must be raw valid Python code. Always use print() to output the final result."""
     return python_repl.invoke(code)
 
-# [PRO FIX: GROQ VALIDATION BYPASS TOOL]
 @tool("websearch")
 def websearch(query: str, topn: int = 5, source: str = "news") -> str:
     """Use this tool to search the internet for latest news, weather, and facts."""
@@ -126,8 +129,6 @@ def planestrator_router(llm_instance, user_query: str) -> str:
     except Exception as e:
         logger.error(f"Router Error: {str(e)}")
         return "GENERAL"
-
-PATTERN_FILE = '/home/ubuntu/RIAN_project/rian_patterns.json'
 
 def learn_from_error(llm_instance, task: str, error_msg: str):
     """Reflect & Improve Loop: Learns from errors and saves rules."""
@@ -203,7 +204,6 @@ def qa_reviewer_agent(llm_instance, draft_text: str) -> str:
         logger.error(f"QA Agent Error: {str(e)}")
         return "⚠️ [QA BYPASSED]: Reviewer module offline."
 
-# --- Request Cache & Execution Locks (Loop/Echo Preventer) ---
 def clean_llm_response(text: str) -> str:
     if not isinstance(text, str):
         return str(text)
@@ -220,7 +220,6 @@ session_locks: Dict[str, Any] = {}
 async def run_direct_vision(prompt_text: str) -> str:
     return pc_tools.run_screen_vision(prompt_text)
 
-# --- CONVERSATION MEMORY & PERSISTENT PERSONA ---
 conversation_history: Dict[str, List[Any]] = {}
 
 RIAN_SYSTEM_PROMPT = f"""You are R.I.A.N. (Real-time Intelligent Adaptive Node), an elite, highly advanced AI assistant.
@@ -299,7 +298,7 @@ async def generate_rian_response(user_id: str, user_query: str, llm_instance) ->
                 search_result = websearch.invoke({"query": search_query})
                 reply_text = f"📰 [LIVE INTERNET SEARCH] {search_query}:\n\n{search_result}"
             else:
-                reply_text = f"SYSTEM LOG: LLaMA-3.1 ne '{tool_name}' tool trigger kiya hai! (Agent execution pending)"
+                reply_text = f"SYSTEM LOG: Local LLM triggered '{tool_name}'. (Agent execution pending)"
         else:
             reply_text = clean_llm_response(response.content.strip())
         
@@ -331,19 +330,13 @@ async def generate_rian_response(user_id: str, user_query: str, llm_instance) ->
 
     return reply_text
 
-# ==========================================
-# VOICE BIOMETRICS & SECURITY SUBSYSTEM
-# ==========================================
 class VoiceBiometricsEngine:
-    """Speaker Recognition & Voice-Locked Mode Spec"""
-
     def __init__(self):
         self.enrolled_voiceprint: Optional[str] = "VOICEPRINT_MANISH_PRIMARY"
         self.lock_mode_enabled: bool = True
         self.confidence_threshold: float = 0.85
 
     async def verify_speaker(self, audio_data: Optional[bytes] = None) -> Dict[str, Any]:
-        """Verify audio biometric matches enrolled owner print"""
         if not self.lock_mode_enabled:
             return {"authenticated": True, "confidence": 1.0, "speaker": "Owner"}
         return {
@@ -353,17 +346,14 @@ class VoiceBiometricsEngine:
             "status": "VOICE_LOCKED_ACTIVE"
         }
 
-# ==========================================
-# MASTER AUTONOMOUS ASSISTANT CORE
-# ==========================================
 class RIANAssistant:
-    """Master Autonomous AI Engine for R.I.A.N. / J.I.V.A."""
-
     def __init__(self) -> None:
-        logger.info("Initializing R.I.A.N. Assistant Master Core...")
-        self.llm = ChatGroq(
-            model_name="llama-3.3-70b-versatile",
-            api_key=settings.groq_api_key or os.getenv("GROQ_API_KEY"),
+        logger.info("Initializing R.I.A.N. Assistant Master Core (100% Local)...")
+        # 100% LOCAL LLM INTEGRATION
+        self.llm = ChatOllama(
+            model="deepseek-r1:8b",
+            base_url="http://127.0.0.1:11434",
+            temperature=0.5
         )
         self.active_tools = ALL_TOOLS + [
             websearch,
@@ -467,9 +457,6 @@ class RIANAssistant:
         await event_bus.stop()
         logger.info("R.I.A.N. Systems safely shutdown.")
 
-# ==========================================
-# FASTAPI APPLICATION & CONNECTION MANAGER
-# ==========================================
 assistant_instance = RIANAssistant()
 app = FastAPI(title="J.I.V.A. / R.I.A.N. Autonomous AI Master")
 app.add_middleware(
@@ -510,9 +497,6 @@ async def startup_event():
 async def shutdown_event():
     await assistant_instance.stop()
 
-# ==========================================
-# PYDANTIC SCHEMAS & API ENDPOINTS
-# ==========================================
 class ChatRequest(BaseModel):
     query: Optional[str] = ""
     text: Optional[str] = ""
@@ -522,31 +506,31 @@ class BiometricsRequest(BaseModel):
     user_id: str
     passcode: Optional[str] = None
 
-# 100% HUMAN VOICE SYSTEM SETUP (OpenAI Nova by Default)
-CURRENT_VOICE = "nova"
+CURRENT_VOICE = "en_US-lessac-medium" 
 
+# 100% OFFLINE LOCAL PIPER TTS IMPLEMENTATION
 async def get_audio_base64(text, voice_name=None):
-    """Generates 100% Human Voice using OpenAI TTS"""
+    """Generates 100% Offline Voice using Local Piper TTS"""
     global CURRENT_VOICE
     if voice_name is None:
         voice_name = CURRENT_VOICE
         
     try:
-        aclient = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        speech_response = await aclient.audio.speech.create(
-            model="tts-1",
-            voice=voice_name,
-            input=text
-        )
-        return base64.b64encode(speech_response.content).decode("utf-8")
+        filename = f"/tmp/rian_voice_{uuid.uuid4()}.wav"
+        
+        # Calls the local piper binary installed on the server
+        cmd = f"echo '{text}' | piper --model {voice_name} --output_file {filename}"
+        subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        with open(filename, "rb") as f:
+            audio_b64 = base64.b64encode(f.read()).decode("utf-8")
+            
+        os.remove(filename)
+        return audio_b64
     except Exception as e:
-        logger.error(f"OpenAI TTS Error: {e}")
+        logger.error(f"Local Piper TTS Error: {e}")
         return ""
 
-
-# ==========================================
-# PHYSICAL PC BRIDGE MANAGER
-# ==========================================
 class PCBridgeManager:
     def __init__(self):
         self.connected_pc = None
@@ -585,7 +569,6 @@ class PCBridgeManager:
 pc_bridge = PCBridgeManager()
 pc_tools.set_bridge_instance(pc_bridge)
 
-
 @app.post("/api/chat")
 async def chat_with_rian(request: ChatRequest):
     q = (request.query or request.text or "").strip()
@@ -600,19 +583,17 @@ async def chat_with_rian(request: ChatRequest):
         
     global CURRENT_VOICE
     
-    # --- VOICE SWITCH LOGIC START ---
     if any(k in q_low for k in ["female", "ladies", "ladki", "aurat"]):
-        CURRENT_VOICE = "nova" # OpenAI Female Voice
-        msg = "Thik hai, ab main female voice mein baat karungi."
+        CURRENT_VOICE = "en_US-lessac-medium"
+        msg = "Thik hai, ab main is voice mein baat karungi."
         audio_data = await get_audio_base64(msg)
         return {"status": "success", "response": msg, "audio_b64": audio_data}
         
     elif any(k in q_low for k in ["male", "gents", "ladka", "aadmi"]):
-        CURRENT_VOICE = "onyx" # OpenAI Male Voice
-        msg = "Thik hai, ab main male voice mein baat karunga."
+        CURRENT_VOICE = "en_US-lessac-medium" # Update with a male model if downloaded
+        msg = "Thik hai, ab main is voice mein baat karunga."
         audio_data = await get_audio_base64(msg)
         return {"status": "success", "response": msg, "audio_b64": audio_data}
-    # --- VOICE SWITCH LOGIC END ---
 
     if "notepad" in q_low:
         await pc_bridge.execute_command("launch_target", {"target": "notepad"})
@@ -622,8 +603,8 @@ async def chat_with_rian(request: ChatRequest):
         await pc_bridge.execute_command("play_youtube", {"query": search_kw or "music"})
         return {"status": "success", "response": "YouTube play ho raha hai.", "reply": "YouTube play ho raha hai."}
 
-    chat_groq = ChatGroq(model_name="llama-3.3-70b-versatile", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
-    response_text = await generate_rian_response(user_id=request.user_id, user_query=q, llm_instance=chat_groq)
+    local_llm_instance = ChatOllama(model="deepseek-r1:8b", base_url="http://127.0.0.1:11434", temperature=0.5)
+    response_text = await generate_rian_response(user_id=request.user_id, user_query=q, llm_instance=local_llm_instance)
     audio_data = await get_audio_base64(response_text)
     
     return {
@@ -642,13 +623,12 @@ async def verify_biometrics(request: BiometricsRequest):
 @app.get("/api/system/status")
 async def get_system_status():
     return {
-        "status": "ONLINE",
+        "status": "ONLINE (LOCAL MODE)",
         "neural_link": "ESTABLISHED",
         "voice_biometrics": "LOCKED_OWNER",
         "active_tools_count": len(assistant_instance.active_tools),
         "timestamp": time.time()
     }
-
 
 @app.websocket("/ws/pc-bridge")
 async def pc_bridge_route(websocket: WebSocket):
@@ -663,14 +643,11 @@ async def pc_bridge_route(websocket: WebSocket):
     except Exception:
         pc_bridge.disconnect()
 
-# ==========================================
-# WEBSOCKET REALTIME TELEMETRY STREAM
-# ==========================================
 @app.websocket("/ws/telemetry")
 async def websocket_telemetry(websocket: WebSocket):
     await manager.connect(websocket)
     try:
-        chat_groq = ChatGroq(model_name="llama-3.3-70b-versatile", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
+        local_llm_instance = ChatOllama(model="deepseek-r1:8b", base_url="http://127.0.0.1:11434", temperature=0.5)
         while True:
             raw_data = await websocket.receive_text()
             try:
@@ -704,9 +681,9 @@ async def websocket_telemetry(websocket: WebSocket):
                 continue
 
             await websocket.send_json({"type": "log", "log": query})
-            await websocket.send_json({"type": "state", "state_text": "THINKING..."})
+            await websocket.send_json({"type": "state", "state_text": "THINKING (LOCAL GPU/CPU)..."})
 
-            response_text = await generate_rian_response(user_id=user_id, user_query=query, llm_instance=chat_groq)
+            response_text = await generate_rian_response(user_id=user_id, user_query=query, llm_instance=local_llm_instance)
 
             await websocket.send_json({"type": "response", "reply": response_text, "text": response_text})
             await websocket.send_json({"type": "state", "state_text": "LISTENING... (Continuous Stream Active)"})
@@ -716,22 +693,11 @@ async def websocket_telemetry(websocket: WebSocket):
         logger.error(f"WebSocket Error: {e}")
         manager.disconnect(websocket)
 
-# ==========================================
-# CLOUD VOICE PIPELINE (JARVIS FULL-DUPLEX)
-# ==========================================
-groq_voice_client = Groq(api_key=os.environ.get("GROQ_API_KEY", os.getenv("GROQ_API_KEY")))
-
 @app.get("/api/system-greeting")
 async def system_greeting():
-    greeting_text = "System R.I.A.N. is online. Direct Neural Link active and ready, Manish."
+    greeting_text = "System R.I.A.N. is online in pure offline mode. Direct Neural Link active, Manish."
     try:
-        aclient = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        speech_response = await aclient.audio.speech.create(
-            model="tts-1",
-            voice="nova",
-            input=greeting_text
-        )
-        audio_b64 = base64.b64encode(speech_response.content).decode("utf-8")
+        audio_b64 = await get_audio_base64(greeting_text)
     except Exception as e:
         logger.error(f"Greeting Voice Error: {e}")
         audio_b64 = ""
@@ -741,28 +707,18 @@ async def system_greeting():
 async def voice_query_handler(file: UploadFile = File(...)):
     try:
         audio_bytes = await file.read()
-        transcription = groq_voice_client.audio.transcriptions.create(
-            file=("audio.webm", audio_bytes),
-            model="whisper-large-v3",
-            prompt="Manish, RIAN, Hinglish, Notepad, YouTube, type, open, shortcuts, system commands",
-            response_format="json",
-        )
-        user_text = transcription.text.strip()
-        if not user_text:
-            return {"user_text": "", "response_text": "I didn't catch that."}
+        
+        # ⚠️ LOCAL STT PLACEHOLDER (Replaced Groq Whisper API)
+        # TODO: Install faster-whisper on your server: `pip install faster-whisper`
+        # and replace this block with local transcription logic.
+        logger.warning("Local STT (faster-whisper) is required here. Bypassing API for now.")
+        user_text = "Voice transcription is currently offline. Please integrate faster-whisper."
+        
+        if not user_text or "offline" in user_text:
+            return {"user_text": "", "response_text": "Local voice recognition system needs to be installed."}
 
         response_text = await assistant_instance.process_query(user_text)
-        
-        # --- 100% HUMAN VOICE (NOVA) ---
-        aclient = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        
-        speech_response = await aclient.audio.speech.create(
-            model="tts-1",
-            voice="nova",
-            input=response_text
-        )
-        audio_b64 = base64.b64encode(speech_response.content).decode("utf-8")
-        # -------------------------------
+        audio_b64 = await get_audio_base64(response_text)
 
         return {
             "user_text": user_text,
@@ -774,18 +730,12 @@ async def voice_query_handler(file: UploadFile = File(...)):
 
 @app.get("/")
 def home():
-    return {"message": "R.I.A.N. AI Assistant is running successfully!"}
+    return {"message": "R.I.A.N. AI Assistant is running successfully in LOCAL MODE!"}
 
-# ==========================================
-# 3D CYBERPUNK NEURAL INTERFACE (EMBEDDED)
-# ==========================================
 @app.get("/ui")
 async def serve_master_ui():
     return FileResponse("frontend.html")
 
-# ==========================================
-# EXTRA API ENDPOINTS
-# ==========================================
 @app.post("/api/generate-media")
 async def generate_media_api(request: Request):
     return {
@@ -795,18 +745,17 @@ async def generate_media_api(request: Request):
         "audio_b64": ""
     }
 
-# ==========================================
-# CLI DUAL-INTERACTIVE SYSTEM
-# ==========================================
 async def terminal_main() -> None:
     audio = AudioService()
     proactive_brain = None
     try:
         await assistant_instance.start()
-        print("\n==============================")
-        print("    R.I.A.N. MASTER ONLINE    ")
-        print("==============================")
-        proactive_brain = ProactiveMonitor(llm=assistant_instance.llm, api_key=settings.groq_api_key)
+        print("\n==================================")
+        print("    R.I.A.N. MASTER ONLINE (LOCAL)  ")
+        print("==================================")
+        
+        # Note: ProactiveMonitor originally used Groq. Update its internal logic to Ollama if needed in its file.
+        proactive_brain = ProactiveMonitor(llm=assistant_instance.llm, api_key="LOCAL_MODE")
         proactive_brain.start()
         try:
             await audio.speak("Hello sir, mai RIAN hoon. Mai aapki kya madad karne ke liye ready hu")
@@ -847,9 +796,6 @@ async def terminal_main() -> None:
             proactive_brain.stop()
         await assistant_instance.stop()
 
-# ==========================================
-# MAIN EXECUTION ENTRY POINT
-# ==========================================
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--cli":
         asyncio.run(terminal_main())
