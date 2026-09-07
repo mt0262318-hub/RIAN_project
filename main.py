@@ -12,15 +12,17 @@ import asyncio
 import logging
 import re
 import threading
-import subprocess
-import uuid
 from typing import List, Optional, Dict, Any
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_ollama import ChatOllama
+
+# --- HYBRID CLOUD ENGINES RESTORED FOR SUPERFAST SPEED ---
+from langchain_groq import ChatGroq
+from groq import Groq
+from openai import AsyncOpenAI
 
 # ==========================================
-# UPDATED HEAVY STORAGE PATHS (5TB GDRIVE)
+# UPDATED HEAVY STORAGE PATHS (5TB GDRIVE - REMAINS LOCAL)
 # ==========================================
 DB_PATH = os.path.expanduser('~/gdrive_storage/faiss_index')
 PATTERN_FILE = os.path.expanduser('~/gdrive_storage/rian_patterns.json')
@@ -298,7 +300,7 @@ async def generate_rian_response(user_id: str, user_query: str, llm_instance) ->
                 search_result = websearch.invoke({"query": search_query})
                 reply_text = f"📰 [LIVE INTERNET SEARCH] {search_query}:\n\n{search_result}"
             else:
-                reply_text = f"SYSTEM LOG: Local LLM triggered '{tool_name}'. (Agent execution pending)"
+                reply_text = f"SYSTEM LOG: LLM triggered '{tool_name}'. (Agent execution pending)"
         else:
             reply_text = clean_llm_response(response.content.strip())
         
@@ -348,11 +350,11 @@ class VoiceBiometricsEngine:
 
 class RIANAssistant:
     def __init__(self) -> None:
-        logger.info("Initializing R.I.A.N. Assistant Master Core (100% Local)...")
-        # 100% LOCAL LLM INTEGRATION
-        self.llm = ChatOllama(
-            model="deepseek-r1:8b",
-            base_url="http://127.0.0.1:11434",
+        logger.info("Initializing R.I.A.N. Assistant Master Core (HYBRID MODE)...")
+        # --- FAST CLOUD LLM FOR SPEED ---
+        self.llm = ChatGroq(
+            model_name="llama-3.3-70b-versatile",
+            api_key=os.getenv("GROQ_API_KEY"),
             temperature=0.5
         )
         self.active_tools = ALL_TOOLS + [
@@ -506,29 +508,25 @@ class BiometricsRequest(BaseModel):
     user_id: str
     passcode: Optional[str] = None
 
-CURRENT_VOICE = "en_US-lessac-medium" 
+# --- FAST CLOUD TTS (OPENAI) ---
+CURRENT_VOICE = "nova" 
 
-# 100% OFFLINE LOCAL PIPER TTS IMPLEMENTATION
 async def get_audio_base64(text, voice_name=None):
-    """Generates 100% Offline Voice using Local Piper TTS"""
+    """Generates Fast Human-like Voice using OpenAI TTS"""
     global CURRENT_VOICE
     if voice_name is None:
         voice_name = CURRENT_VOICE
         
     try:
-        filename = f"/tmp/rian_voice_{uuid.uuid4()}.wav"
-        
-        # Calls the local piper binary installed on the server
-        cmd = f"echo '{text}' | piper --model {voice_name} --output_file {filename}"
-        subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        with open(filename, "rb") as f:
-            audio_b64 = base64.b64encode(f.read()).decode("utf-8")
-            
-        os.remove(filename)
-        return audio_b64
+        aclient = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        speech_response = await aclient.audio.speech.create(
+            model="tts-1",
+            voice=voice_name,
+            input=text
+        )
+        return base64.b64encode(speech_response.content).decode("utf-8")
     except Exception as e:
-        logger.error(f"Local Piper TTS Error: {e}")
+        logger.error(f"OpenAI TTS Error: {e}")
         return ""
 
 class PCBridgeManager:
@@ -584,13 +582,13 @@ async def chat_with_rian(request: ChatRequest):
     global CURRENT_VOICE
     
     if any(k in q_low for k in ["female", "ladies", "ladki", "aurat"]):
-        CURRENT_VOICE = "en_US-lessac-medium"
+        CURRENT_VOICE = "nova"
         msg = "Thik hai, ab main is voice mein baat karungi."
         audio_data = await get_audio_base64(msg)
         return {"status": "success", "response": msg, "audio_b64": audio_data}
         
     elif any(k in q_low for k in ["male", "gents", "ladka", "aadmi"]):
-        CURRENT_VOICE = "en_US-lessac-medium" # Update with a male model if downloaded
+        CURRENT_VOICE = "onyx"
         msg = "Thik hai, ab main is voice mein baat karunga."
         audio_data = await get_audio_base64(msg)
         return {"status": "success", "response": msg, "audio_b64": audio_data}
@@ -603,8 +601,9 @@ async def chat_with_rian(request: ChatRequest):
         await pc_bridge.execute_command("play_youtube", {"query": search_kw or "music"})
         return {"status": "success", "response": "YouTube play ho raha hai.", "reply": "YouTube play ho raha hai."}
 
-    local_llm_instance = ChatOllama(model="deepseek-r1:8b", base_url="http://127.0.0.1:11434", temperature=0.5)
-    response_text = await generate_rian_response(user_id=request.user_id, user_query=q, llm_instance=local_llm_instance)
+    # Use fast cloud LLM for chat endpoint
+    chat_groq = ChatGroq(model_name="llama-3.3-70b-versatile", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
+    response_text = await generate_rian_response(user_id=request.user_id, user_query=q, llm_instance=chat_groq)
     audio_data = await get_audio_base64(response_text)
     
     return {
@@ -623,7 +622,7 @@ async def verify_biometrics(request: BiometricsRequest):
 @app.get("/api/system/status")
 async def get_system_status():
     return {
-        "status": "ONLINE (LOCAL MODE)",
+        "status": "ONLINE (HYBRID MODE)",
         "neural_link": "ESTABLISHED",
         "voice_biometrics": "LOCKED_OWNER",
         "active_tools_count": len(assistant_instance.active_tools),
@@ -647,7 +646,7 @@ async def pc_bridge_route(websocket: WebSocket):
 async def websocket_telemetry(websocket: WebSocket):
     await manager.connect(websocket)
     try:
-        local_llm_instance = ChatOllama(model="deepseek-r1:8b", base_url="http://127.0.0.1:11434", temperature=0.5)
+        chat_groq = ChatGroq(model_name="llama-3.3-70b-versatile", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
         while True:
             raw_data = await websocket.receive_text()
             try:
@@ -681,9 +680,9 @@ async def websocket_telemetry(websocket: WebSocket):
                 continue
 
             await websocket.send_json({"type": "log", "log": query})
-            await websocket.send_json({"type": "state", "state_text": "THINKING (LOCAL GPU/CPU)..."})
+            await websocket.send_json({"type": "state", "state_text": "THINKING (HYBRID ENGINE)..."})
 
-            response_text = await generate_rian_response(user_id=user_id, user_query=query, llm_instance=local_llm_instance)
+            response_text = await generate_rian_response(user_id=user_id, user_query=query, llm_instance=chat_groq)
 
             await websocket.send_json({"type": "response", "reply": response_text, "text": response_text})
             await websocket.send_json({"type": "state", "state_text": "LISTENING... (Continuous Stream Active)"})
@@ -695,7 +694,7 @@ async def websocket_telemetry(websocket: WebSocket):
 
 @app.get("/api/system-greeting")
 async def system_greeting():
-    greeting_text = "System R.I.A.N. is online in pure offline mode. Direct Neural Link active, Manish."
+    greeting_text = "System R.I.A.N. is online in Hybrid mode. Direct Neural Link active, Manish."
     try:
         audio_b64 = await get_audio_base64(greeting_text)
     except Exception as e:
@@ -703,19 +702,24 @@ async def system_greeting():
         audio_b64 = ""
     return {"message": greeting_text, "audio_b64": audio_b64}
 
+# --- CLOUD VOICE STT (GROQ WHISPER) ---
+groq_voice_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
 @app.post("/api/voice-query")
 async def voice_query_handler(file: UploadFile = File(...)):
     try:
         audio_bytes = await file.read()
         
-        # ⚠️ LOCAL STT PLACEHOLDER (Replaced Groq Whisper API)
-        # TODO: Install faster-whisper on your server: `pip install faster-whisper`
-        # and replace this block with local transcription logic.
-        logger.warning("Local STT (faster-whisper) is required here. Bypassing API for now.")
-        user_text = "Voice transcription is currently offline. Please integrate faster-whisper."
+        transcription = groq_voice_client.audio.transcriptions.create(
+            file=("audio.webm", audio_bytes),
+            model="whisper-large-v3",
+            prompt="Manish, RIAN, Hinglish, Notepad, YouTube, type, open, shortcuts, system commands",
+            response_format="json",
+        )
+        user_text = transcription.text.strip()
         
-        if not user_text or "offline" in user_text:
-            return {"user_text": "", "response_text": "Local voice recognition system needs to be installed."}
+        if not user_text:
+            return {"user_text": "", "response_text": "I didn't catch that."}
 
         response_text = await assistant_instance.process_query(user_text)
         audio_b64 = await get_audio_base64(response_text)
@@ -726,11 +730,11 @@ async def voice_query_handler(file: UploadFile = File(...)):
             "audio_b64": audio_b64,
         }
     except Exception as e:
-        return {"user_text": "", "response_text": f"Error: {str(e)}"}
+        return {"user_text": "", "response_text": f"Error: API Keys check karein. {str(e)}"}
 
 @app.get("/")
 def home():
-    return {"message": "R.I.A.N. AI Assistant is running successfully in LOCAL MODE!"}
+    return {"message": "R.I.A.N. AI Assistant is running successfully in HYBRID MODE!"}
 
 @app.get("/ui")
 async def serve_master_ui():
@@ -751,11 +755,10 @@ async def terminal_main() -> None:
     try:
         await assistant_instance.start()
         print("\n==================================")
-        print("    R.I.A.N. MASTER ONLINE (LOCAL)  ")
+        print("    R.I.A.N. MASTER ONLINE (HYBRID)  ")
         print("==================================")
         
-        # Note: ProactiveMonitor originally used Groq. Update its internal logic to Ollama if needed in its file.
-        proactive_brain = ProactiveMonitor(llm=assistant_instance.llm, api_key="LOCAL_MODE")
+        proactive_brain = ProactiveMonitor(llm=assistant_instance.llm, api_key="HYBRID_MODE")
         proactive_brain.start()
         try:
             await audio.speak("Hello sir, mai RIAN hoon. Mai aapki kya madad karne ke liye ready hu")
