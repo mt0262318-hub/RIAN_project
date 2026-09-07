@@ -17,7 +17,7 @@ import uuid
 from typing import List, Optional, Dict, Any
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.chat_models import ChatOllama
+from langchain_ollama import ChatOllama
 
 # ==========================================
 # UPDATED HEAVY STORAGE PATHS (5TB GDRIVE)
