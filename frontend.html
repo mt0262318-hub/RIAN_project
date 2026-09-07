@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>R.I.A.N. Neural Interface</title>
+    <title>R.I.A.N. Neural Interface (LOCAL)</title>
     <!-- Three.js for Background Dots -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
@@ -373,7 +373,7 @@
     <!-- DESKTOP BACKGROUND WIDGETS -->
     <div class="hud-glass desktop-status dev-element">
         <h3>SYSTEM R.I.A.N.</h3>
-        <p>STATUS: <span class="text-highlight">ONLINE</span></p>
+        <p>STATUS: <span class="text-highlight">ONLINE (LOCAL)</span></p>
         <p>NEURAL LINK: ESTABLISHED</p>
         <div class="dev-toggle" id="devToggleBtn">DEV MODE: ON</div>
     </div>
@@ -409,7 +409,7 @@
             
             <div class="action-menu" id="actionMenu">
                 <div class="action-item" onclick="document.getElementById('hiddenFileInput').click(); this.parentNode.classList.remove('active');">📎 Upload Files</div>
-                <div class="action-item" onclick="this.parentNode.classList.remove('active'); alert('Connecting to Google Drive...');">☁️ Add from Drive</div>
+                <div class="action-item" onclick="this.parentNode.classList.remove('active'); alert('Mounting Local 5TB Storage (~/gdrive_storage)...');">☁️ Add from Local Drive</div>
                 <div class="action-divider"></div>
                 <div class="action-item" onclick="triggerModalLogic('media'); this.parentNode.classList.remove('active');">🖼️ Create Image / Video</div>
                 <div class="action-divider"></div>
@@ -481,7 +481,7 @@
 
         document.getElementById('hiddenFileInput').addEventListener('change', function(e) {
             if(this.files && this.files.length > 0) {
-                appendLog('SYSTEM', `File queued for upload: ${this.files[0].name}`);
+                appendLog('SYSTEM', `File queued for local processing: ${this.files[0].name}`);
             }
         });
 
@@ -612,15 +612,15 @@
             } else if (type === 'apps') {
                 openModal('🎛️ SYSTEM EXTENSIONS', `
                     <div style="display:flex; flex-wrap:wrap; gap:10px;">
-                        <span style="padding:10px 15px; border:1px solid #00ffaa; color:#00ffaa; border-radius:8px; cursor:pointer;">🔗 Google Workspace</span>
-                        <span style="padding:10px 15px; border:1px solid #00ffaa; color:#00ffaa; border-radius:8px; cursor:pointer;">💻 GitHub Copilot</span>
+                        <span style="padding:10px 15px; border:1px solid #00ffaa; color:#00ffaa; border-radius:8px; cursor:pointer;">🔗 Local Vault</span>
+                        <span style="padding:10px 15px; border:1px solid #00ffaa; color:#00ffaa; border-radius:8px; cursor:pointer;">💻 Local Copilot (Ollama)</span>
                     </div>
                 `);
             } else if (type === 'settings') {
                 openModal('⚙️ PREFERENCES & SETTINGS', `
                     <p style="margin-bottom:15px; color:#fff;"><strong>Account:</strong> Manish Tiwari (Pro)</p>
                     <p style="margin-bottom:15px; color:#fff;"><strong>Voice Biometrics:</strong> <span style="color:#00ffaa">Active</span></p>
-                    <p style="margin-bottom:15px; color:#fff;"><strong>API Connection:</strong> <span style="color:#00ffaa">Connected</span></p>
+                    <p style="margin-bottom:15px; color:#fff;"><strong>API Connection:</strong> <span style="color:#00ffaa">Local Node Active</span></p>
                     <hr style="border:0; border-top:1px solid rgba(0,229,255,0.2); margin:15px 0;">
                     <button style="width:100%; padding:10px; background:rgba(255,68,68,0.1); border:1px solid #ff4444; color:#ff4444; border-radius:6px; cursor:pointer; font-weight:bold;">Disconnect Neural Link</button>
                 `);
@@ -673,8 +673,8 @@
 
         function playRianVoice(audioB64) {
             if (!audioB64) return;
-            let audio = new Audio("data:audio/mp3;base64," + audioB64);
-            audio.play();
+            let audio = new Audio("data:audio/wav;base64," + audioB64);
+            audio.play().catch(e => console.log("Audio play blocked by browser:", e));
         }
 
         // [PRO FIX]: MIC BUTTON LOGIC (Actual MediaRecorder connected to Backend)
@@ -705,7 +705,7 @@
                             if(data.response_text) appendLog('RIAN', data.response_text);
                             if(data.audio_b64) playRianVoice(data.audio_b64);
                         } catch (err) {
-                            appendLog('SYSTEM', 'Voice processing failed or server offline.');
+                            appendLog('SYSTEM', 'Voice processing failed or local server offline.');
                         }
                         statusLabel.innerText = "AWAITING COMMAND...";
                     };
@@ -713,7 +713,7 @@
                     recorder.start();
                     isRecording = true;
                     micBtn.style.color = '#ff4444'; // Red to indicate recording
-                    appendLog('SYSTEM', 'Microphone activated. Listening...');
+                    appendLog('SYSTEM', 'Microphone activated. Listening (Local Mode)...');
                     statusLabel.innerText = "🔴 LISTENING... SPEAK NOW";
                 } catch (e) {
                     appendLog('SYSTEM', 'Microphone access denied or not available.');
@@ -735,7 +735,7 @@
             inputField.value = "";
             inputField.style.height = 'auto'; // Reset text box height
             appendLog('USER', query);
-            statusLabel.innerText = "PROCESSING COMMAND...";
+            statusLabel.innerText = "PROCESSING COMMAND (LOCAL LLM)...";
 
             try {
                 const response = await fetch('/api/chat', {
@@ -753,7 +753,7 @@
                 playRianVoice(data.audio_b64);
                 statusLabel.innerText = "AWAITING COMMAND...";
             } catch (error) {
-                const mockReply = `Neural link busy. Acknowledged: ${query}`;
+                const mockReply = `Neural link busy or Local Node offline. Acknowledged: ${query}`;
                 appendLog('RIAN', mockReply);
                 statusLabel.innerText = "AWAITING COMMAND...";
             }
@@ -775,14 +775,14 @@
                 const data = await res.json();
                 if (data.audio_b64) playRianVoice(data.audio_b64);
             } catch (e) {
-                console.log("Greeting failed, backend offline.");
+                console.log("Greeting failed, local backend offline.");
             }
         });
 
         // --- 8. TELEMETRY & 3D BACKGROUND ---
         function startTelemetry() {
             const testStream = document.getElementById("testStream");
-            const logs = ["Vector Memory Pulse -> 3120 Vectors Synced", "Agent Tool Schema Integrity -> 16 Tools Active", "PC Bridge Link -> Connected", "Autonomous Learner -> Active"];
+            const logs = ["Vector Memory Pulse -> Local Vectors Synced", "Agent Tool Schema Integrity -> Local Tools Active", "PC Bridge Link -> Connected", "Autonomous Learner -> Active"];
             let idx = 0;
             setInterval(() => {
                 if (!testStream) return;
