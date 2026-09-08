@@ -602,7 +602,7 @@ async def chat_with_rian(request: ChatRequest):
         return {"status": "success", "response": "YouTube play ho raha hai.", "reply": "YouTube play ho raha hai."}
 
     # Use fast cloud LLM for chat endpoint
-    chat_groq = ChatGroq(model_name="llama-3.2-3b-preview", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
+    chat_groq = ChatGroq(model_name="openai/gpt-oss-120b", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
     response_text = await generate_rian_response(user_id=request.user_id, user_query=q, llm_instance=chat_groq)
     audio_data = await get_audio_base64(response_text)
     
@@ -646,7 +646,7 @@ async def pc_bridge_route(websocket: WebSocket):
 async def websocket_telemetry(websocket: WebSocket):
     await manager.connect(websocket)
     try:
-        chat_groq = ChatGroq(model_name="llama-3.2-3b-preview", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
+        chat_groq = ChatGroq(model_name="openai/gpt-oss-120b", api_key=os.getenv("GROQ_API_KEY"), temperature=0.5)
         while True:
             raw_data = await websocket.receive_text()
             try:
